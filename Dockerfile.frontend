@@ -7,9 +7,9 @@ WORKDIR /app
 # Install build dependencies (required for native modules like lightningcss)
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3 ca-certificates cargo rustc && rm -rf /var/lib/apt/lists/*
 
-# Copy package.json and install dependencies
+# Copy package.json and install dependencies (including dev deps for build)
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
 # Ensure lightningcss native module is built from source when prebuilt binary is not available
 RUN npm rebuild lightningcss --build-from-source || true
 
