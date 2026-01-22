@@ -1,0 +1,37 @@
+# Use official Node runtime as base image
+FROM node:20-bullseye-slim AS builder
+
+# Set the working directory
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --only=production
+
+# Copy the frontend code
+COPY frontend/ .
+
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM node:20-bullseye-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Copy package.json to install dev dependencies for running the app
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+# Copy the built application from the previous stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
+
+# Expose port
+EXPOSE 3000
+
+# Run the application
+ENV NODE_ENV=production
+CMD ["npm", "start"]
