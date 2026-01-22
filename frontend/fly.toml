@@ -20,14 +20,3 @@ app = "samma-frontend"
     port = 443
 
 
-# Optional: set healthcheck path
-[checks]
-  timeout = 2000
-  interval = 10000
-  grace_period = 10000
-  restart_limit = 0
-  [[checks.http]]
-    path = "/api/"
-    method = "get"
-    protocol = "http"
-    port = 3000
