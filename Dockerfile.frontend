@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 # Copy package.json and install dependencies
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --only=production
+# Ensure lightningcss native module is built from source when prebuilt binary is not available
+RUN npm rebuild lightningcss --build-from-source || true
 
 # Copy the frontend code
 COPY frontend/ .
