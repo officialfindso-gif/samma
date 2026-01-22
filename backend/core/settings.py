@@ -67,10 +67,15 @@ MIDDLEWARE = [
 ]
 MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]         # на время разработки
+# Allow CORS origins from env (comma-separated) or default localhost during development
+env_cors = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if env_cors:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in env_cors.split(',') if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]         # на время разработки
 
 ROOT_URLCONF = 'core.urls'
 
