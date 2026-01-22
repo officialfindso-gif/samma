@@ -5,7 +5,7 @@ FROM node:20-bullseye-slim AS builder
 WORKDIR /app
 
 # Install build dependencies (required for native modules like lightningcss)
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3 ca-certificates cargo rustc && rm -rf /var/lib/apt/lists/*
 
 # Copy package.json and install dependencies
 COPY frontend/package.json frontend/package-lock.json ./
