@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -25,7 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-+oo*7q40z@seci4ctotflmi*ue-pn#p2h^c$6#c$#nm5zrfa82')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError(
+        "SECRET_KEY is not set in environment variables. "
+        "Please set SECRET_KEY in your .env file or environment."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes')
@@ -75,7 +81,20 @@ else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-    ]         # на время разработки
+    ]
+
+# SECURITY: Never allow all origins in production
+# This is strictly a development convenience and should NEVER be True in production
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Debug: print resolved CORS settings at startup so we can verify in logs
+try:
+    print(f"CORS_ALLOWED_ORIGINS={CORS_ALLOWED_ORIGINS}")
+    print(f"CORS_ALLOW_ALL_ORIGINS={CORS_ALLOW_ALL_ORIGINS}")
+    logger.info('CORS_ALLOWED_ORIGINS=%s', CORS_ALLOWED_ORIGINS)
+    logger.info('CORS_ALLOW_ALL_ORIGINS=%s', CORS_ALLOW_ALL_ORIGINS)
+except Exception:
+    pass
 
 ROOT_URLCONF = 'core.urls'
 
@@ -128,6 +147,18 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+    # Rate limiting / Throttling
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/hour',     # Неаутентифицированные: 10 запросов/час (только логин/регистрация)
+        'user': '1000/hour',   # Аутентифицированные: 1000 запросов/час
+        'scrape': '50/hour',   # Парсинг: 50 запросов/час на пользователя
+    },
 }
 
 
@@ -167,6 +198,14 @@ if DATABASE_URL:
                 'PORT': result.port or '',
             }
             print('Using DATABASE_URL (fallback parser) for database configuration')
+
+# SECURITY: SQLite is NOT allowed in production (DEBUG=False)
+if not DEBUG and DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    raise ValueError(
+        "SQLite is not allowed in production. "
+        "Please set DATABASE_URL environment variable to a PostgreSQL connection string. "
+        "Example: DATABASE_URL=postgres://user:pass@host:5432/dbname"
+    )
 
 
 
@@ -210,3 +249,16 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# Simple JWT settings (configurable via env)
+ACCESS_MINUTES = int(os.getenv('SIMPLE_JWT_ACCESS_MINUTES', '60'))
+REFRESH_DAYS = int(os.getenv('SIMPLE_JWT_REFRESH_DAYS', '30'))
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=ACCESS_MINUTES),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=REFRESH_DAYS),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+}
+INSTALLED_APPS += ['rest_framework_simplejwt.token_blacklist']

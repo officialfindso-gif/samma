@@ -161,7 +161,7 @@ export default function CompetitorsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-xl">Загрузка...</div>
       </div>
     );
@@ -169,14 +169,14 @@ export default function CompetitorsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-red-400">Ошибка: {error}</div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-gray-400">Ошибка: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -194,14 +194,14 @@ export default function CompetitorsPage() {
         <div className="flex gap-2">
           <button
             onClick={handleScrapeAll}
-            className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition border border-green-500/50"
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition border border-gray-600"
             title="Спарсить посты всех активных конкурентов"
           >
             🔄 Спарсить всех
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:from-blue-600 hover:to-purple-700 transition"
+            className="px-4 py-2 bg-white hover:bg-gray-100 text-black rounded-lg transition font-medium"
           >
             {showForm ? '❌ Отмена' : '➕ Добавить аккаунт'}
           </button>
@@ -210,11 +210,11 @@ export default function CompetitorsPage() {
 
       {/* Workspace Selector */}
       <div className="mb-6">
-        <label className="text-gray-400 text-sm mb-2 block">Workspace:</label>
+        <label className="text-white text-sm mb-2 block font-medium">Workspace:</label>
         <select
           value={selectedWorkspaceId || ''}
           onChange={(e) => handleWorkspaceChange(Number(e.target.value))}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 w-full max-w-md"
+          className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full max-w-md text-white"
         >
           {workspaces.map(ws => (
             <option key={ws.id} value={ws.id}>
@@ -226,15 +226,15 @@ export default function CompetitorsPage() {
 
       {/* Create Form */}
       {showForm && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Добавить аккаунт конкурента</h2>
+        <div className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 border border-gray-700/30 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4 text-white">Добавить аккаунт конкурента</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-400 text-sm mb-1 block">Платформа:</label>
+              <label className="text-white text-sm mb-1 block font-medium">Платформа:</label>
               <select
                 value={formData.platform}
                 onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
-                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full text-white"
                 required
               >
                 <option value="instagram">📷 Instagram</option>
@@ -244,35 +244,35 @@ export default function CompetitorsPage() {
             </div>
 
             <div>
-              <label className="text-gray-400 text-sm mb-1 block">Username:</label>
+              <label className="text-white text-sm mb-1 block font-medium">Username:</label>
               <input
                 type="text"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full text-white placeholder-gray-500"
                 placeholder="username или название канала"
                 required
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-gray-400 text-sm mb-1 block">URL:</label>
+              <label className="text-white text-sm mb-1 block font-medium">URL:</label>
               <input
                 type="url"
                 value={formData.url}
                 onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full text-white placeholder-gray-500"
                 placeholder="https://instagram.com/username"
                 required
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-gray-400 text-sm mb-1 block">Заметки (опционально):</label>
+              <label className="text-white text-sm mb-1 block font-medium">Заметки (опционально):</label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 w-full text-white placeholder-gray-500"
                 placeholder="Почему отслеживаем этот аккаунт..."
                 rows={3}
               />
@@ -283,15 +283,15 @@ export default function CompetitorsPage() {
                 type="checkbox"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4"
+                className="w-4 h-4 accent-white"
               />
-              <label className="text-gray-400 text-sm">Активен (отслеживать)</label>
+              <label className="text-white text-sm">Активен (отслеживать)</label>
             </div>
 
             <div className="md:col-span-2">
               <button
                 type="submit"
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg hover:from-green-600 hover:to-blue-700 transition font-semibold"
+                className="w-full px-4 py-3 bg-white hover:bg-gray-100 text-black rounded-lg transition font-semibold"
               >
                 ✅ Добавить
               </button>
@@ -303,7 +303,7 @@ export default function CompetitorsPage() {
       {/* Accounts List */}
       <div className="grid grid-cols-1 gap-4">
         {filteredAccounts.length === 0 && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
+          <div className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 border border-gray-700/30 rounded-lg p-8 text-center">
             <p className="text-gray-400 text-lg">
               Пока нет добавленных аккаунтов конкурентов.
             </p>
@@ -316,7 +316,7 @@ export default function CompetitorsPage() {
         {filteredAccounts.map(account => (
           <div
             key={account.id}
-            className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:bg-gray-750 transition"
+            className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 border border-gray-700/30 rounded-lg p-4 hover:border-gray-600 hover:shadow-lg transition"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -329,7 +329,7 @@ export default function CompetitorsPage() {
                   <span
                     className={`ml-2 px-2 py-1 rounded text-xs ${
                       account.is_active
-                        ? 'bg-green-500/20 text-green-400'
+                        ? 'bg-gray-600/20 text-gray-700'
                         : 'bg-gray-500/20 text-gray-400'
                     }`}
                   >
@@ -341,7 +341,7 @@ export default function CompetitorsPage() {
                   href={account.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 text-sm"
+                  className="text-gray-400 hover:text-gray-300 text-sm"
                 >
                   🔗 {account.url}
                 </a>
@@ -361,7 +361,7 @@ export default function CompetitorsPage() {
               <div className="flex items-center gap-2 ml-4">
                 <button
                   onClick={() => handleScrape(account.id)}
-                  className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-sm transition"
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition"
                   title="Спарсить последние посты"
                 >
                   🔄
@@ -370,8 +370,8 @@ export default function CompetitorsPage() {
                   onClick={() => handleToggleActive(account)}
                   className={`px-3 py-2 rounded-lg text-sm transition ${
                     account.is_active
-                      ? 'bg-gray-700 hover:bg-gray-600'
-                      : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                      : 'bg-gray-700 hover:bg-gray-600 text-white'
                   }`}
                   title={account.is_active ? 'Приостановить' : 'Активировать'}
                 >
@@ -379,7 +379,7 @@ export default function CompetitorsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(account.id)}
-                  className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition"
+                  className="px-3 py-2 bg-gray-700 hover:bg-red-900/60 text-white rounded-lg text-sm transition"
                   title="Удалить"
                 >
                   🗑️
@@ -392,3 +392,4 @@ export default function CompetitorsPage() {
     </div>
   );
 }
+

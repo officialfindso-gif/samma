@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -15,7 +15,7 @@
 /* Стили для лучшей горизонтальной прокрутки */
 .overflow-x-auto {
   scrollbar-width: thin;
-  scrollbar-color: #64748b #1e293b;
+  scrollbar-color: #ffffff #1a1a1a;
 }
 
 .overflow-x-auto::-webkit-scrollbar {
@@ -23,17 +23,17 @@
 }
 
 .overflow-x-auto::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #1a1a1a;
   border-radius: 3px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #64748b;
+  background: #666666;
   border-radius: 3px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #888888;
 }
 
 /* Line clamp utilities */
@@ -44,19 +44,28 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  
+
   .line-clamp-3 {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Hide scrollbar for horizontal scroll containers */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #000000;
+    --foreground: #ffffff;
   }
 }
 

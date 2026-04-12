@@ -61,7 +61,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
       {post.generated_caption && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-emerald-400">
+            <h3 className="text-sm font-semibold text-gray-500">
               Сгенерированное описание
             </h3>
             <button
@@ -76,8 +76,8 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
               {copied ? "✓ Скопировано" : "Копировать"}
             </button>
           </div>
-          <div className="p-4 bg-emerald-950/20 rounded-lg border border-emerald-800/50">
-            <p className="text-sm text-emerald-100 whitespace-pre-wrap">
+          <div className="p-4 bg-gray-700/20 rounded-lg border border-gray-800/50">
+            <p className="text-sm text-gray-300 whitespace-pre-wrap">
               {post.generated_caption}
             </p>
           </div>
@@ -87,11 +87,11 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
       {/* Ошибка */}
       {post.error_message && (
         <div>
-          <h3 className="text-sm font-semibold text-red-400 mb-2">
+          <h3 className="text-sm font-semibold text-gray-400 mb-2">
             Ошибка обработки
           </h3>
-          <div className="p-4 bg-red-950/20 rounded-lg border border-red-800/50">
-            <p className="text-sm text-red-300 whitespace-pre-wrap">
+          <div className="p-4 bg-gray-700/20 rounded-lg border border-gray-800/50">
+            <p className="text-sm text-gray-300 whitespace-pre-wrap">
               {post.error_message}
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
             onClick={() => onProcess(post.id)}
             className="
               mt-3 px-4 py-2 text-sm font-medium rounded w-full
-              bg-red-800 hover:bg-red-900
+              bg-gray-800 hover:bg-gray-900
               text-white transition-colors
             "
           >
@@ -114,7 +114,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
           onClick={() => onProcess(post.id)}
           className="
             px-4 py-3 text-sm font-medium rounded w-full
-            bg-indigo-700 hover:bg-indigo-800
+            bg-gray-700 hover:bg-gray-700
             text-white transition-colors
           "
         >
@@ -125,8 +125,8 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
       {/* Индикатор обработки */}
       {post.status === "in_progress" && (
         <div className="text-center py-8">
-          <div className="inline-flex items-center gap-3 text-indigo-400">
-            <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="inline-flex items-center gap-3 text-gray-700">
+            <div className="w-5 h-5 border-2 border-gray-700 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-sm font-medium">Обработка...</span>
           </div>
           <p className="text-xs text-slate-500 mt-2">
@@ -152,7 +152,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
                 href={post.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-400 hover:underline truncate max-w-xs text-right"
+                className="text-gray-700 hover:underline truncate max-w-xs text-right"
               >
                 {post.source_url}
               </a>
@@ -175,36 +175,36 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
           </h3>
           <div className="grid grid-cols-2 gap-4">
             {post.views_count !== null && post.views_count !== undefined && (
-              <div className="bg-indigo-950/30 p-4 rounded-lg border border-indigo-800/30">
+              <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-700/30">
                 <div className="text-xs text-slate-400 mb-1">Просмотры</div>
-                <div className="text-2xl font-bold text-indigo-300">
+                <div className="text-2xl font-bold text-gray-700">
                   {post.views_count.toLocaleString('ru-RU')}
                 </div>
               </div>
             )}
             
             {post.likes_count !== null && post.likes_count !== undefined && (
-              <div className="bg-rose-950/30 p-4 rounded-lg border border-rose-800/30">
+              <div className="bg-gray-500/30 p-4 rounded-lg border border-gray-500/30">
                 <div className="text-xs text-slate-400 mb-1">Лайки</div>
-                <div className="text-2xl font-bold text-rose-400">
+                <div className="text-2xl font-bold text-gray-500">
                   {post.likes_count.toLocaleString('ru-RU')}
                 </div>
               </div>
             )}
             
             {post.comments_count !== null && post.comments_count !== undefined && (
-              <div className="bg-cyan-950/30 p-4 rounded-lg border border-cyan-800/30">
+              <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-700/30">
                 <div className="text-xs text-slate-400 mb-1">Комментарии</div>
-                <div className="text-2xl font-bold text-cyan-400">
+                <div className="text-2xl font-bold text-gray-300">
                   {post.comments_count.toLocaleString('ru-RU')}
                 </div>
               </div>
             )}
             
             {post.shares_count !== null && post.shares_count !== undefined && (
-              <div className="bg-emerald-950/30 p-4 rounded-lg border border-emerald-800/30">
+              <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-800/30">
                 <div className="text-xs text-slate-400 mb-1">Репосты</div>
-                <div className="text-2xl font-bold text-emerald-400">
+                <div className="text-2xl font-bold text-gray-500">
                   {post.shares_count.toLocaleString('ru-RU')}
                 </div>
               </div>
@@ -213,7 +213,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
 
           {/* Engagement Rate */}
           {post.engagement_rate !== null && post.engagement_rate !== undefined && (
-            <div className="mt-4 bg-gradient-to-r from-purple-950/30 to-pink-950/30 p-4 rounded-lg border border-purple-800/30">
+            <div className="mt-4 bg-gradient-to-r from-gray-700/30 to-gray-500/30 p-4 rounded-lg border border-gray-700/30">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs text-slate-400 mb-1">🔥 Engagement Rate</div>
@@ -221,7 +221,7 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
                     Показывает вовлеченность аудитории
                   </div>
                 </div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                <div className="text-3xl font-bold text-gray-300">
                   {post.engagement_rate}%
                 </div>
               </div>
