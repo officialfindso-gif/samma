@@ -9,6 +9,8 @@ RUN npm ci
 # Build the application
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -17,6 +19,7 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.78.17.34.15.sslip.io/api}
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
