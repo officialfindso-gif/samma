@@ -46,7 +46,7 @@ export default function PostsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black-900 to-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-6">Посты</h1>
         {posts.length === 0 ? (
@@ -54,7 +54,7 @@ export default function PostsPage() {
         ) : (
           <ul className="space-y-4">
             {posts.map((post) => (
-              <li key={post.id} className="bg-slate-800/60 rounded-lg p-4 text-white">
+              <li key={post.id} className="bg-gray-800/60 rounded-lg p-4 text-white">
                 <div className="font-bold text-lg mb-2">{post.title || `Пост #${post.id}`}</div>
                 <div className="text-gray-300 mb-1">{post.status}</div>
                 <div className="text-gray-400 text-sm">Создан: {new Date(post.created_at).toLocaleString("ru-RU")}</div>
@@ -66,3 +66,4 @@ export default function PostsPage() {
     </div>
   );
 }
+

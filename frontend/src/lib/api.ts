@@ -15,6 +15,37 @@ export interface CurrentUser {
 }
 
 /**
+ * Paginated response from DRF PageNumberPagination
+ */
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+/**
+ * Helper: extract results from paginated or non-paginated response.
+ * Handles both formats safely:
+ * - Paginated: { count, next, previous, results: [...] }
+ * - Non-paginated: [...] (plain array)
+ */
+async function parsePaginated<T>(res: Response): Promise<T[]> {
+  const data = await res.json();
+  // If it's a paginated response with a "results" array, use it
+  if (data && typeof data === "object" && Array.isArray(data.results)) {
+    return data.results;
+  }
+  // If it's already an array, return it directly
+  if (Array.isArray(data)) {
+    return data;
+  }
+  // Fallback: empty array for unexpected formats
+  console.warn("Unexpected API response format:", data);
+  return [];
+}
+
+/**
  * Логин через JWT эндпоинт Django:
  * POST /api/auth/token/
  */
@@ -113,7 +144,7 @@ export async function getWorkspaces(
     throw new Error(`Failed to load workspaces: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -208,6 +239,8 @@ export interface Post {
   transcript: string;
   generated_caption: string;
   generated_script: string;
+  generated_title: string;
+  generated_description: string;
   error_message: string;
   // Метрики вирусности
   views_count: number | null;
@@ -231,9 +264,10 @@ export interface Prompt {
   id: number;
   workspace: number;
   name: string;
-  type: "caption" | "script" | "other";
+  type: "caption" | "script" | "title" | "description" | "other";
   content: string;
   is_active: boolean;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -279,13 +313,22 @@ export interface User {
 
 
 /**
- * GET /api/posts/?workspace={id}
+ * GET /api/posts/?workspace={id}&sort={field}&ordering={asc|desc}&min_er={value}
  */
 export async function getPosts(
   accessToken: string,
-  workspaceId?: number
+  workspaceId?: number,
+  params?: { sort?: string; ordering?: "asc" | "desc"; min_er?: number }
 ): Promise<Post[]> {
-  const url = workspaceId ? `${API_URL}/api/posts/?workspace=${workspaceId}` : `${API_URL}/api/posts/`;
+  const searchParams = new URLSearchParams();
+  if (workspaceId) searchParams.set("workspace", String(workspaceId));
+  if (params?.sort) searchParams.set("sort", params.sort);
+  if (params?.ordering) searchParams.set("ordering", params.ordering);
+  if (params?.min_er != null && !isNaN(params.min_er)) searchParams.set("min_er", String(params.min_er));
+
+  const url = searchParams.toString()
+    ? `${API_URL}/api/posts/?${searchParams.toString()}`
+    : `${API_URL}/api/posts/`;
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -301,7 +344,7 @@ export async function getPosts(
     throw new Error(`Failed to load posts: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -366,6 +409,36 @@ export async function createPost(
 }
 
 /**
+ * PATCH /api/posts/{id}/
+ * Обновление поста.
+ */
+export async function updatePost(
+  accessToken: string,
+  postId: number,
+  data: { title?: string; original_text?: string; transcript?: string }
+): Promise<Post> {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (res.status === 401) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update post: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
  * DELETE /api/posts/{id}/
  * Удаление поста.
  */
@@ -415,7 +488,7 @@ export async function getPrompts(
     throw new Error(`Failed to load prompts: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -448,6 +521,30 @@ export async function updatePrompt(
 }
 
 /**
+ * DELETE /api/prompts/{id}/
+ */
+export async function deletePrompt(
+  accessToken: string,
+  promptId: number
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/prompts/${promptId}/`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 401) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(`Failed to delete prompt: ${res.status} ${text}`);
+  }
+}
+
+/**
  * POST /api/prompts/
  */
 export async function createPrompt(
@@ -458,6 +555,7 @@ export async function createPrompt(
     type?: Prompt["type"];
     content: string;
     is_active?: boolean;
+    is_default?: boolean;
   }
 ): Promise<Prompt> {
   const res = await fetch(`${API_URL}/api/prompts/`, {
@@ -467,9 +565,12 @@ export async function createPrompt(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      type: "caption",
-      is_active: true,
-      ...data,
+      workspace: data.workspace,
+      name: data.name,
+      type: data.type || "caption",
+      content: data.content,
+      is_active: data.is_active !== undefined ? data.is_active : true,
+      is_default: data.is_default || false,
     }),
   });
 
@@ -480,6 +581,32 @@ export async function createPrompt(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to create prompt: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * POST /api/prompts/{id}/set_default/
+ */
+export async function setDefaultPrompt(
+  accessToken: string,
+  promptId: number
+): Promise<{ detail: string; is_default: boolean }> {
+  const res = await fetch(`${API_URL}/api/prompts/${promptId}/set_default/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 401) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to set default prompt: ${res.status} ${text}`);
   }
 
   return res.json();
@@ -506,7 +633,7 @@ export async function getSubscriptionPlans(
     throw new Error(`Failed to load subscription plans: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -530,7 +657,7 @@ export async function getUserSubscriptions(
     throw new Error(`Failed to load user subscriptions: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -613,7 +740,7 @@ export async function getCompetitorAccounts(
     throw new Error(`Failed to load competitor accounts: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -756,6 +883,9 @@ export interface SystemSettings {
   auto_scraping_enabled: boolean;
   scraping_hour: number;
   scraping_minute: number;
+  max_parse_depth: number;
+  max_workspaces_per_user: number;
+  max_api_calls_per_day: number;
   last_scraping_check: string | null;
   created_at: string;
   updated_at: string;
@@ -765,6 +895,9 @@ export interface UpdateSystemSettings {
   auto_scraping_enabled?: boolean;
   scraping_hour?: number;
   scraping_minute?: number;
+  max_parse_depth?: number;
+  max_workspaces_per_user?: number;
+  max_api_calls_per_day?: number;
 }
 
 /**
@@ -866,7 +999,7 @@ export async function getActivities(
     throw new Error(`Failed to load activities: ${res.status} ${text}`);
   }
 
-  return res.json();
+  return parsePaginated(res);
 }
 
 /**
@@ -892,6 +1025,35 @@ export async function createActivity(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to create activity: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * PATCH /api/activities/{id}/
+ */
+export async function updateActivity(
+  accessToken: string,
+  id: number,
+  data: { title?: string; description?: string; activity_type?: WorkspaceActivity['activity_type'] }
+): Promise<WorkspaceActivity> {
+  const res = await fetch(`${API_URL}/api/activities/${id}/`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (res.status === 401) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update activity: ${res.status} ${text}`);
   }
 
   return res.json();
@@ -985,5 +1147,229 @@ export async function getAdminStats(accessToken: string): Promise<AdminStats> {
   }
 
   return res.json();
+}
+
+// ========================
+// Admin API Errors
+// ========================
+
+export interface AdminApiErrors {
+  today_total: number;
+  today_errors: number;
+  week_errors: number;
+  success_rate: number;
+  platform_errors: Record<string, number>;
+  recent_errors: {
+    id: number;
+    username: string;
+    platform: string;
+    url: string;
+    error_message: string;
+    created_at: string;
+  }[];
+  top_error_users: {
+    username: string;
+    error_count: number;
+  }[];
+}
+
+/**
+ * GET /api/admin/api-errors/
+ */
+export async function getAdminApiErrors(accessToken: string): Promise<AdminApiErrors> {
+  const res = await fetch(`${API_URL}/api/admin/api-errors/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get API errors: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+
+// ========================
+// Invite Token API
+// ========================
+
+export interface InviteToken {
+  id: number;
+  token: string;
+  email: string;
+  workspace: number;
+  workspace_name: string;
+  role: string;
+  expires_at: string;
+  used: boolean;
+  created_by: number | null;
+  created_by_name: string | null;
+  created_at: string;
+  is_expired: boolean;
+}
+
+export interface CreateInviteToken {
+  workspace: number;
+  role?: string;
+  email?: string;
+  expires_at: string;
+}
+
+/**
+ * GET /api/invites/
+ */
+export async function getInviteTokens(
+  accessToken: string
+): Promise<InviteToken[]> {
+  const res = await fetch(`${API_URL}/api/invites/`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to load invites: ${res.status} ${text}`);
+  }
+  return parsePaginated(res);
+}
+
+/**
+ * POST /api/invites/
+ */
+export async function createInviteToken(
+  accessToken: string,
+  data: CreateInviteToken
+): Promise<InviteToken> {
+  const res = await fetch(`${API_URL}/api/invites/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create invite: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * DELETE /api/invites/{id}/
+ */
+export async function deleteInviteToken(
+  accessToken: string,
+  id: number
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/invites/${id}/`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(`Failed to delete invite: ${res.status} ${text}`);
+  }
+}
+
+/**
+ * POST /api/auth/register/
+ */
+export async function registerWithInvite(
+  data: { username: string; email: string; password: string; invite_token: string }
+): Promise<{ access: string; refresh: string; user: { id: number; username: string; email: string } }> {
+  const res = await fetch(`${API_URL}/api/auth/register/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Registration failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+
+// ========================
+// Post Notes API
+// ========================
+
+export interface PostNote {
+  id: number;
+  post: number;
+  content: string;
+  author: number | null;
+  author_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePostNote {
+  post: number;
+  content: string;
+}
+
+/**
+ * GET /api/post-notes/?post={postId}
+ */
+export async function getPostNotes(
+  accessToken: string,
+  postId: number
+): Promise<PostNote[]> {
+  const res = await fetch(`${API_URL}/api/post-notes/?post=${postId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to load notes: ${res.status} ${text}`);
+  }
+  return parsePaginated(res);
+}
+
+/**
+ * POST /api/post-notes/
+ */
+export async function createPostNote(
+  accessToken: string,
+  data: CreatePostNote
+): Promise<PostNote> {
+  const res = await fetch(`${API_URL}/api/post-notes/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create note: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * DELETE /api/post-notes/{id}/
+ */
+export async function deletePostNote(
+  accessToken: string,
+  id: number
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/post-notes/${id}/`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(`Failed to delete note: ${res.status} ${text}`);
+  }
 }
 

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { 
-  getWorkspaces, 
+import {
+  getWorkspaces,
   Workspace,
   getActivities,
   createActivity,
+  updateActivity,
   deleteActivity,
   WorkspaceActivity,
   CreateWorkspaceActivity,
@@ -21,6 +22,7 @@ export default function ClientDetailPage() {
   const [activities, setActivities] = useState<WorkspaceActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<WorkspaceActivity | null>(null);
   const [activityForm, setActivityForm] = useState<CreateWorkspaceActivity>({
     workspace: parseInt(clientId),
     activity_type: 'note',
@@ -101,7 +103,7 @@ export default function ClientDetailPage() {
 
   async function handleDeleteActivity(activityId: number) {
     if (!confirm("Удалить активность?")) return;
-    
+
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -115,6 +117,43 @@ export default function ClientDetailPage() {
     } catch (error) {
       console.error("Failed to delete activity:", error);
       alert("❌ Ошибка удаления активности");
+    }
+  }
+
+  async function handleEditActivity(activity: WorkspaceActivity) {
+    setEditingActivity(activity);
+    setActivityForm({
+      workspace: activity.workspace,
+      activity_type: activity.activity_type,
+      title: activity.title,
+      description: activity.description,
+    });
+    setShowActivityModal(true);
+  }
+
+  async function handleUpdateActivity(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingActivity) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      await updateActivity(token, editingActivity.id, {
+        title: activityForm.title,
+        description: activityForm.description,
+        activity_type: activityForm.activity_type,
+      });
+      setShowActivityModal(false);
+      setEditingActivity(null);
+      loadActivities();
+      loadClient();
+    } catch (error) {
+      console.error("Failed to update activity:", error);
+      alert("❌ Ошибка обновления активности");
     }
   }
 
@@ -142,7 +181,7 @@ export default function ClientDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black-900 to-black-900 flex items-center justify-center">
         <div className="text-white text-xl">⏳ Загрузка...</div>
       </div>
     );
@@ -153,13 +192,13 @@ export default function ClientDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black-900 to-black-900 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/app/clients")}
-            className="text-blue-400 hover:text-blue-300 mb-4 inline-flex items-center gap-2"
+            className="text-gray-600 hover:text-gray-600 mb-4 inline-flex items-center gap-2"
           >
             ← Назад к клиентам
           </button>
@@ -177,7 +216,7 @@ export default function ClientDetailPage() {
             
             <button
               onClick={() => router.push(`/app?workspace=${client.id}`)}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
             >
               🎯 Открыть посты
             </button>
@@ -244,7 +283,7 @@ export default function ClientDetailPage() {
               <h2 className="text-xl font-bold text-white">📊 Активности ({activities.length})</h2>
               <button
                 onClick={() => setShowActivityModal(true)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-medium transition-colors"
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded font-medium transition-colors"
               >
                 ➕ Добавить
               </button>
@@ -280,12 +319,20 @@ export default function ClientDetailPage() {
                           <span>{new Date(activity.created_at).toLocaleString("ru-RU")}</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteActivity(activity.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
-                      >
-                        🗑️
-                      </button>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleEditActivity(activity)}
+                          className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteActivity(activity.id)}
+                          className="px-2 py-1 bg-gray-700 hover:bg-red-700 text-white text-xs rounded"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -296,7 +343,7 @@ export default function ClientDetailPage() {
                 <p>Пока нет активностей</p>
                 <button
                   onClick={() => setShowActivityModal(true)}
-                  className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-medium transition-colors"
+                  className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded font-medium transition-colors"
                 >
                   ➕ Добавить первую активность
                 </button>
@@ -336,15 +383,15 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      {/* Модальное окно добавления активности */}
+      {/* Модальное окно активности */}
       {showActivityModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 max-w-lg w-full">
             <h2 className="text-2xl font-bold text-white mb-6">
-              ➕ Новая активность
+              {editingActivity ? '✏️ Редактировать активность' : '➕ Новая активность'}
             </h2>
 
-            <form onSubmit={handleCreateActivity} className="space-y-4">
+            <form onSubmit={editingActivity ? handleUpdateActivity : handleCreateActivity} className="space-y-4">
               {/* Тип активности */}
               <div>
                 <label className="block text-white font-medium mb-2">
@@ -358,7 +405,7 @@ export default function ClientDetailPage() {
                       activity_type: e.target.value as any,
                     })
                   }
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-gray-600 focus:outline-none"
                   required
                 >
                   {Object.entries(activityTypeLabel).map(([value, label]) => (
@@ -380,7 +427,7 @@ export default function ClientDetailPage() {
                   onChange={(e) =>
                     setActivityForm({ ...activityForm, title: e.target.value })
                   }
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-gray-600 focus:outline-none"
                   placeholder="Краткое описание активности"
                   required
                 />
@@ -396,7 +443,7 @@ export default function ClientDetailPage() {
                   onChange={(e) =>
                     setActivityForm({ ...activityForm, description: e.target.value })
                   }
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white focus:border-gray-600 focus:outline-none"
                   placeholder="Подробное описание (опционально)"
                   rows={3}
                 />
@@ -406,14 +453,15 @@ export default function ClientDetailPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
+                  className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-600 text-white rounded font-medium transition-colors"
                 >
-                  ➕ Создать
+                  {editingActivity ? '💾 Сохранить' : '➕ Создать'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowActivityModal(false);
+                    setEditingActivity(null);
                     setActivityForm({
                       workspace: parseInt(clientId),
                       activity_type: 'note',

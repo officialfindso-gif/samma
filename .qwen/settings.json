@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree *)",
+      "Bash(npm install *)",
+      "Bash(.\\venv\\scripts\\python.exe *)",
+      "Bash(python *)",
+      "Bash(powershell *)",
+      "Bash(npx *)",
+      "Bash(mkdir *)",
+      "Bash(type *)",
+      "Bash(findstr *)",
+      "Bash(git rm *)",
+      "Bash(rm *)",
+      "Bash(git add *)",
+      "Bash(git reset *)"
+    ]
+  },
+  "$version": 3
+}

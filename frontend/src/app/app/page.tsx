@@ -10,6 +10,7 @@ import {
   createPost,
   refreshToken,
   deletePost,
+  updatePost,
   getCurrentUser,
 } from "@/lib/api";
 
@@ -18,7 +19,9 @@ import Sidebar from "./components/Sidebar";
 import FiltersBar from "./components/FiltersBar";
 import PostsList from "./components/PostsList";
 import PostDetail from "./components/PostDetail";
+import EditPostModal from "./components/EditPostModal";
 import CreatePostModal from "./components/CreatePostModal";
+import Onboarding from "./components/Onboarding";
 import { formatNumber } from "@/lib/utils";
 
 export default function AppPage() {
@@ -41,12 +44,19 @@ export default function AppPage() {
   const [createOriginalText, setCreateOriginalText] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [selectedPosts, setSelectedPosts] = useState<Set<number>>(new Set());
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [minER, setMinER] = useState<string>("");
 
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -56,21 +66,69 @@ export default function AppPage() {
     views: true,
     likes: true,
     comments: true,
+    er: true,
     plays: false,
     saves: false,
     followers: false,
     platform: true,
   });
 
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    "checkbox", "source", "original", "result", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
+  ]);
+
+  const columnLabels: Record<string, string> = {
+    checkbox: "Выбор",
+    source: "Источник",
+    original: "Оригинал",
+    result: "Результат",
+    views: "Просмотры",
+    likes: "Лайки",
+    comments: "Комментарии",
+    er: "ER%",
+    plays: "Воспроизведения",
+    saves: "Сохранения",
+    followers: "Подписчики",
+    platform: "Платформа",
+    status: "Статус",
+    actions: "Действия",
+  };
+
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("tableColumns") : null;
-    if (saved) setVisibleColumns(JSON.parse(saved));
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Мерджим с дефолтом — новые колонки появятся, старые сохранятся
+        setVisibleColumns((prev) => ({ ...prev, ...parsed }));
+      } catch {
+        // Если ошибка парсинга — оставляем дефолт
+      }
+    }
+    // Load saved column order
+    const savedOrder = typeof window !== "undefined" ? localStorage.getItem("columnOrder") : null;
+    if (savedOrder) {
+      try {
+        const parsedOrder = JSON.parse(savedOrder);
+        setColumnOrder(parsedOrder);
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const toggleColumn = (column: string) => {
     const newSettings = { ...visibleColumns, [column]: !visibleColumns[column] };
     setVisibleColumns(newSettings);
     if (typeof window !== "undefined") localStorage.setItem("tableColumns", JSON.stringify(newSettings));
+  };
+
+  const moveColumn = (fromIndex: number, toIndex: number) => {
+    const newOrder = [...columnOrder];
+    const [moved] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, moved);
+    setColumnOrder(newOrder);
+    if (typeof window !== "undefined") localStorage.setItem("columnOrder", JSON.stringify(newOrder));
   };
 
   const handleApiCall = useCallback(async <T,>(apiCall: () => Promise<T>): Promise<T> => {
@@ -110,6 +168,12 @@ export default function AppPage() {
       return;
     }
     setAccessToken(token);
+
+    // Проверяем, показывали ли уже онбординг
+    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+    }
   }, [router]);
 
   useEffect(() => {
@@ -142,14 +206,15 @@ export default function AppPage() {
     if (!accessToken || !activeWorkspaceId) return;
     setLoadingPosts(true);
     setError(null);
-    handleApiCall(() => getPosts(accessToken, activeWorkspaceId))
+    // Не отправляем min_er на сервер — фильтруем только на клиенте
+    handleApiCall(() => getPosts(accessToken, activeWorkspaceId, { sort: sortBy, ordering: sortOrder }))
       .then((data) => setPosts(data))
       .catch((err) => {
         console.error(err);
         setError(err instanceof Error ? err.message : "Не удалось загрузить посты");
       })
       .finally(() => setLoadingPosts(false));
-  }, [accessToken, activeWorkspaceId, handleApiCall]);
+  }, [accessToken, activeWorkspaceId, sortBy, sortOrder, minER, handleApiCall]);
 
   useEffect(() => {
     if (!accessToken || !activeWorkspaceId) return;
@@ -224,6 +289,13 @@ export default function AppPage() {
     }
   };
 
+  const handleEditPost = async (updated: Post) => {
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setSelectedPost(updated);
+    setEditingPost(null);
+    setEditOpen(false);
+  };
+
   const handleBulkDelete = async () => {
     if (!accessToken || selectedPosts.size === 0) return;
     if (!confirm(`Вы уверены, что хотите удалить ${selectedPosts.size} постов? Это действие нельзя отменить.`)) return;
@@ -255,6 +327,14 @@ export default function AppPage() {
     if (filterStatus !== "all" && post.status !== filterStatus) return false;
     if (filterPlatform !== "all" && post.platform !== filterPlatform) return false;
     if (searchQuery && !((post.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (post.original_text || "").toLowerCase().includes(searchQuery.toLowerCase()))) return false;
+    // Фильтр по минимальному Engagement Rate
+    if (minER) {
+      const minErNum = parseFloat(minER);
+      if (!isNaN(minErNum) && post.engagement_rate != null) {
+        const er = typeof post.engagement_rate === "string" ? parseFloat(post.engagement_rate) : post.engagement_rate;
+        if (er < minErNum) return false;
+      }
+    }
     return true;
   });
 
@@ -323,13 +403,13 @@ export default function AppPage() {
   if (!accessToken) return null;
 
   return (
-    <div className="min-h-screen w-full flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-50">
+    <div className="min-h-screen w-full flex bg-black text-white">
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <Sidebar workspaces={workspaces} loading={loading} activeWorkspaceId={activeWorkspaceId} setActiveWorkspaceId={setActiveWorkspaceId} handleLogout={handleLogout} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isStaff={isStaff} />
 
-      <main className="flex-1 min-w-0 w-full bg-gradient-to-br from-indigo-900/5 via-transparent to-purple-900/5">
-        <div className="w-full h-full p-4 lg:p-6">
+      <main className="flex-1 min-w-0 w-full bg-black">
+        <div className="w-full h-full p-3 sm:p-4 lg:p-6 2xl:p-8 max-w-8xl mx-auto">
           <Header 
             sidebarOpen={sidebarOpen} 
             setSidebarOpen={setSidebarOpen} 
@@ -341,26 +421,50 @@ export default function AppPage() {
             setActiveWorkspaceId={setActiveWorkspaceId}
           />
 
-          {error && <div className="mb-4 text-sm text-red-400 p-3 bg-red-950/30 rounded border border-red-800/50">{error}</div>}
+          {error && <div className="mb-4 lg:mb-6 text-xs sm:text-sm text-gray-400 p-3 sm:p-4 bg-gray-800/30 rounded border border-gray-800/50">{error}</div>}
 
-          <FiltersBar postsExist={posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} toggleSelectAll={toggleSelectAll} filteredLength={filteredPosts.length} />
+          <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} toggleSelectAll={toggleSelectAll} filteredLength={filteredPosts.length} />
 
           {loadingPosts ? (
-            <div className="text-sm text-slate-400">Загрузка постов...</div>
+            <div className="text-xs sm:text-sm text-gray-400">Загружка постов...</div>
           ) : filteredPosts.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-lg text-slate-400 mb-6">{posts.length === 0 ? "Постов пока нет. Создайте первый!" : "Ничего не найдено по фильтрам"}</p>
-              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-sm px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-all font-medium">Создать пост</button>}
+            <div className="text-center py-12 sm:py-16 lg:py-20">
+              <p className="text-base sm:text-lg lg:text-xl 2xl:text-2xl text-gray-400 mb-6 lg:mb-8">
+                {posts.length === 0
+                  ? "Постов пока нет. Создайте первый!"
+                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER
+                  ? "Ничего не найдено по фильтрам. Попробуйте изменить параметры."
+                  : "Ничего не найдено."}
+              </p>
+              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">Создать пост</button>}
+              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER) && (
+                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">Сбросить фильтры</button>
+              )}
             </div>
           ) : (
-            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
+            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
           )}
 
-          {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />}
+          {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} onEdit={() => { setEditingPost(selectedPost); setEditOpen(true); setSelectedPost(null); }} formatNumber={formatNumber} accessToken={accessToken} />}
+
+          {editOpen && editingPost && accessToken && (
+            <EditPostModal post={editingPost} accessToken={accessToken} onSave={handleEditPost} onClose={() => { setEditOpen(false); setSelectedPost(editingPost); setEditingPost(null); }} />
+          )}
 
           <CreatePostModal createOpen={createOpen} setCreateOpen={setCreateOpen} createTitle={createTitle} setCreateTitle={setCreateTitle} createSourceUrl={createSourceUrl} setCreateSourceUrl={setCreateSourceUrl} createOriginalText={createOriginalText} setCreateOriginalText={setCreateOriginalText} handleCreateSubmit={handleCreateSubmit} createLoading={createLoading} />
         </div>
       </main>
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <Onboarding onClose={() => {
+          setShowOnboarding(false);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("hasSeenOnboarding", "true");
+          }
+        }} />
+      )}
     </div>
   );
 }
+

@@ -11,15 +11,15 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
   const getStatusColor = (status: string) => {
     switch (status) {
       case "new":
-        return "bg-slate-700 text-slate-300";
+        return "bg-gray-700 text-gray-300";
       case "in_progress":
-        return "bg-indigo-700 text-indigo-100 animate-pulse";
+        return "bg-white/10 text-white animate-pulse";
       case "ready":
-        return "bg-emerald-800 text-emerald-100";
+        return "bg-gray-800 text-gray-300";
       case "error":
-        return "bg-red-900 text-red-200";
+        return "bg-gray-900 text-gray-300";
       default:
-        return "bg-slate-700 text-slate-300";
+        return "bg-gray-700 text-gray-300";
     }
   };
 
@@ -60,14 +60,14 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
         p-3 lg:p-4 rounded-lg border cursor-pointer transition-all
         ${
           isSelected
-            ? "border-indigo-600 bg-indigo-950/30 shadow-md"
-            : "border-slate-700/50 bg-slate-800/30 hover:border-slate-600"
+            ? "border-white/50 bg-white/10 shadow-md"
+            : "border-gray-700/50 bg-gray-800/30 hover:border-gray-600"
         }
       `}
     >
       {/* Заголовок и статус */}
       <div className="flex items-start justify-between mb-3">
-        <h3 className="text-sm font-medium text-slate-100 flex-1 mr-2 line-clamp-2">
+        <h3 className="text-sm font-medium text-white flex-1 mr-2 line-clamp-2">
           {post.title || `Пост #${post.id}`}
         </h3>
         <span
@@ -84,7 +84,7 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
       {/* Исходный текст */}
       {post.original_text && (
         <div className="mb-2">
-          <p className="text-xs text-slate-400 line-clamp-2">
+          <p className="text-xs text-gray-400 line-clamp-2">
             {post.original_text}
           </p>
         </div>
@@ -92,8 +92,8 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
 
       {/* Сгенерированный контент */}
       {post.generated_caption && (
-        <div className="mb-2 p-2 bg-emerald-950/30 rounded border border-emerald-800/50">
-          <p className="text-xs text-emerald-300 line-clamp-2">
+        <div className="mb-2 p-2 bg-gray-700/30 rounded border border-gray-800/50">
+          <p className="text-xs text-gray-300 line-clamp-2">
             {post.generated_caption}
           </p>
         </div>
@@ -101,16 +101,16 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
 
       {/* Ошибка */}
       {post.error_message && (
-        <div className="mb-2 p-2 bg-red-950/30 rounded border border-red-800/50">
-          <p className="text-xs text-red-300 line-clamp-1">
+        <div className="mb-2 p-2 bg-gray-800/30 rounded border border-gray-800/50">
+          <p className="text-xs text-gray-300 line-clamp-1">
             {post.error_message}
           </p>
         </div>
       )}
 
       {/* Кнопки действий */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700 gap-2">
-        <span className="text-xs text-slate-500 truncate">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-700 gap-2">
+        <span className="text-xs text-gray-500 truncate">
           {new Date(post.created_at).toLocaleDateString("ru-RU")}
         </span>
 
@@ -122,7 +122,7 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
             }}
             className="
               px-2 lg:px-3 py-1 text-xs font-medium rounded
-              bg-indigo-700 hover:bg-indigo-800 text-white
+              bg-white text-black hover:bg-gray-100
               transition-colors whitespace-nowrap flex-shrink-0
             "
           >
@@ -138,7 +138,7 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
             }}
             className="
               px-2 lg:px-3 py-1 text-xs font-medium rounded
-              bg-red-800 hover:bg-red-900 text-white
+              bg-gray-800 hover:bg-gray-900 text-white
               transition-colors whitespace-nowrap flex-shrink-0
             "
           >
@@ -147,7 +147,7 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
         )}
 
         {post.status === "in_progress" && (
-          <span className="text-xs text-blue-400 animate-pulse">
+          <span className="text-xs text-gray-700 animate-pulse">
             Обработка...
           </span>
         )}
