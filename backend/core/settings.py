@@ -39,6 +39,15 @@ DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes')
 # Allow hosts from env or default empty list
 ALLOWED_HOSTS = [h for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h]
 
+# Security settings for reverse proxy (Caddy)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://78.17.34.15.sslip.io",
+    "https://api.78.17.34.15.sslip.io",
+    "http://localhost:3000",
+]
 
 # Application definition
 
