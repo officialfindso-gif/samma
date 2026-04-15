@@ -2,7 +2,7 @@ from celery import shared_task
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
-from .models import Post, Prompt
+from .models import Post, Prompt, SystemSettings
 from .llm import generate_caption
 from .scraper import scrape_content
 import logging
@@ -48,13 +48,15 @@ def scrape_and_process_post(self, post_id: int):
             user=post.created_by,
             created_at__gte=today
         ).count()
-        if today_calls >= settings.max_api_calls_per_day:
+        
+        sys_settings = SystemSettings.get_settings()
+        if today_calls >= sys_settings.max_api_calls_per_day:
             raise RuntimeError(
-                f'Достигнут дневной лимит API-вызовов ({settings.max_api_calls_per_day}). '
+                f'Достигнут дневной лимит API-вызовов ({sys_settings.max_api_calls_per_day}). '
                 f'Попробуйте завтра или обратитесь к администратору.'
             )
 
-        scraped_data = scrape_content(post.source_url, max_items=settings.max_parse_depth, user=post.created_by)
+        scraped_data = scrape_content(post.source_url, max_items=sys_settings.max_parse_depth, user=post.created_by)
 
         # Если это профиль (Instagram, TikTok, YouTube или LinkedIn) - создаём отдельные посты для каждого видео/поста
         if 'posts' in scraped_data and scraped_data.get('platform') in ('instagram', 'tiktok', 'youtube', 'linkedin'):
