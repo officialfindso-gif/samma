@@ -23,62 +23,60 @@ logger = logging.getLogger(__name__)
 _session: Optional[requests.Session] = None
 
 
-def transcribe_youtube_audio(url: str) -> Optional[str]:
+def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]:
     """
-    Скачивает аудио из YouTube и отправляет в Whisper для транскрибации.
+    Скачивает видео/аудио (YouTube, Instagram, TikTok) и отправляет в Whisper.
     """
-    logger.info(f"Starting audio transcription for: {url}")
-    audio_file_path = "temp_audio" # yt-dlp добавит расширение сам
+    logger.info(f"Starting audio transcription for {platform}: {url}")
+    output_file = f"temp_media_{platform}"
     
-    # Опции для yt-dlp: скачиваем только лучшее аудио, не конвертируем
+    # Опции для yt-dlp
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': audio_file_path + '.%(ext)s',
+        'format': 'bestaudio/best' if platform == 'youtube' else 'bestvideo+bestaudio/best',
+        'outtmpl': output_file + '.%(ext)s',
         'quiet': True,
         'no_warnings': True,
+        'merge_output_format': 'mp4', # Для Instagram лучше иметь контейнер
     }
 
     try:
-        # 1. Скачиваем аудио
+        # 1. Скачиваем медиа
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            # yt-dlp сохраняет файл с расширением, например temp_audio.webm или temp_audio.m4a
-            # Нам нужно узнать точное имя файла
             filename = ydl.prepare_filename(info)
-            # Если это аудио, расширение может отличаться, проверим
+            
+            # Проверка существования файла (иногда расширение меняется)
             if not os.path.exists(filename):
-                # Иногда yt-dlp сохраняет как просто temp_audio, если формат не определился точно в имени
-                # Попробуем найти любой файл temp_audio.*
                 import glob
-                files = glob.glob("temp_audio.*")
+                files = glob.glob(f"{output_file}.*")
                 if files:
                     filename = files[0]
                 else:
-                    raise FileNotFoundError("Audio file not found after download")
+                    raise FileNotFoundError("Media file not found after download")
         
-        logger.info(f"Audio downloaded to: {filename}")
+        logger.info(f"Media downloaded to: {filename} ({os.path.getsize(filename) / 1024 / 1024:.2f} MB)")
 
-        # 2. Отправляем в OpenAI Whisper
+        # 2. Отправляем в OpenAI Whisper (поддерживает и видео, и аудио)
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        with open(filename, "rb") as audio_file:
+        with open(filename, "rb") as media_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1", 
-                file=audio_file
+                file=media_file
             )
         
         logger.info("Transcription successful!")
         return transcript.text
 
     except Exception as e:
-        logger.error(f"Transcription failed: {e}")
+        logger.error(f"Transcription failed for {platform}: {e}")
         return None
     finally:
-        # 3. Удаляем временный файл
+        # 3. Чистим за собой
         try:
-            if os.path.exists(audio_file_path):
-                os.remove(audio_file_path)
+            if os.path.exists(output_file):
+                os.remove(output_file)
             import glob
-            for f in glob.glob("temp_audio.*"):
+            for f in glob.glob(f"{output_file}.*"):
                 os.remove(f)
         except Exception:
             pass
@@ -604,7 +602,7 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         # 🚀 Если описания нет (пусто или None), пробуем транскрибировать аудио!
         if not caption_text:
             logger.info(f"YouTube description is empty for {url}, trying Whisper transcription...")
-            caption_text = transcribe_youtube_audio(url) or ""
+            caption_text = transcribe_media_audio(url, 'youtube') or ""
         
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
@@ -664,6 +662,12 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     else:
         caption_edges = media_data.get('edge_media_to_caption', {}).get('edges', [])
         caption_text = caption_edges[0].get('node', {}).get('text', '') if caption_edges else ''
+        
+        # 🚀 Instagram: If no caption, transcribe audio
+        if not caption_text and platform == 'instagram':
+            logger.info(f"Instagram caption is empty for {url}, trying Whisper transcription...")
+            caption_text = transcribe_media_audio(url, 'instagram') or ""
+            
         owner = media_data.get('owner', {})
         author = owner.get('username', 'unknown')
         views_count = media_data.get('video_view_count')
