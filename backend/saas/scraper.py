@@ -12,11 +12,76 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pathlib import Path
 
+# Импорты для транскрибации
+import yt_dlp
+from openai import OpenAI
+
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 logger = logging.getLogger(__name__)
 
 _session: Optional[requests.Session] = None
+
+
+def transcribe_youtube_audio(url: str) -> Optional[str]:
+    """
+    Скачивает аудио из YouTube и отправляет в Whisper для транскрибации.
+    """
+    logger.info(f"Starting audio transcription for: {url}")
+    audio_file_path = "temp_audio" # yt-dlp добавит расширение сам
+    
+    # Опции для yt-dlp: скачиваем только лучшее аудио, не конвертируем
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': audio_file_path + '.%(ext)s',
+        'quiet': True,
+        'no_warnings': True,
+    }
+
+    try:
+        # 1. Скачиваем аудио
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            # yt-dlp сохраняет файл с расширением, например temp_audio.webm или temp_audio.m4a
+            # Нам нужно узнать точное имя файла
+            filename = ydl.prepare_filename(info)
+            # Если это аудио, расширение может отличаться, проверим
+            if not os.path.exists(filename):
+                # Иногда yt-dlp сохраняет как просто temp_audio, если формат не определился точно в имени
+                # Попробуем найти любой файл temp_audio.*
+                import glob
+                files = glob.glob("temp_audio.*")
+                if files:
+                    filename = files[0]
+                else:
+                    raise FileNotFoundError("Audio file not found after download")
+        
+        logger.info(f"Audio downloaded to: {filename}")
+
+        # 2. Отправляем в OpenAI Whisper
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        with open(filename, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file
+            )
+        
+        logger.info("Transcription successful!")
+        return transcript.text
+
+    except Exception as e:
+        logger.error(f"Transcription failed: {e}")
+        return None
+    finally:
+        # 3. Удаляем временный файл
+        try:
+            if os.path.exists(audio_file_path):
+                os.remove(audio_file_path)
+            import glob
+            for f in glob.glob("temp_audio.*"):
+                os.remove(f)
+        except Exception:
+            pass
 
 
 class ScrapeError(Exception):
@@ -535,6 +600,12 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
 
     if platform == 'youtube' and 'title' in data:
         caption_text = data.get('description', '')
+        
+        # 🚀 Если описания нет (пусто или None), пробуем транскрибировать аудио!
+        if not caption_text:
+            logger.info(f"YouTube description is empty for {url}, trying Whisper transcription...")
+            caption_text = transcribe_youtube_audio(url) or ""
+        
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
         likes_count = data.get('likeCountInt')
