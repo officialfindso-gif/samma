@@ -13,7 +13,11 @@
       "Bash(git rm *)",
       "Bash(rm *)",
       "Bash(git add *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(ssh *)",
+      "Bash(dir *)"
     ]
   },
   "$version": 3

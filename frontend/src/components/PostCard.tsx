@@ -99,6 +99,13 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
         </div>
       )}
 
+      {/* Индикатор транскрипта */}
+      {post.transcript && (
+        <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-[11px] text-slate-200">
+          🎧 Есть транскрипт
+        </div>
+      )}
+
       {/* Ошибка */}
       {post.error_message && (
         <div className="mb-2 p-2 bg-gray-800/30 rounded border border-gray-800/50">
