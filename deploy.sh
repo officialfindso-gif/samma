@@ -60,118 +60,6 @@ cd $APP_DIR
 
 echo -e "${YELLOW}[5/8] Создание файлов конфигурации...${NC}"
 
-# Production docker-compose.yml
-cat > docker-compose.prod.yml << 'COMPOSE_EOF'
-version: '3.9'
-
-services:
-  db:
-    image: postgres:16-alpine
-    container_name: content_saas_db
-    environment:
-      POSTGRES_DB: content_saas
-      POSTGRES_USER: ${POSTGRES_USER:-content_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-content_pass_secure}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app_network
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: content_saas_redis
-    networks:
-      - app_network
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: content_saas_backend
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             python manage.py collectstatic --noinput &&
-             gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3"
-    volumes:
-      - static_data:/app/static
-      - media_data:/app/media
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER:-content_user}:${POSTGRES_PASSWORD:-content_pass_secure}@db:5432/content_saas
-      - REDIS_URL=redis://redis:6379/0
-      - DEBUG=False
-    depends_on:
-      - db
-      - redis
-    networks:
-      - app_network
-    restart: unless-stopped
-
-  celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: content_saas_celery
-    command: celery -A core worker -l info
-    volumes:
-      - media_data:/app/media
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER:-content_user}:${POSTGRES_PASSWORD:-content_pass_secure}@db:5432/content_saas
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
-    networks:
-      - app_network
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: content_saas_frontend
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api
-    depends_on:
-      - backend
-    networks:
-      - app_network
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: content_saas_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - static_data:/var/www/static
-      - media_data:/var/www/media
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - app_network
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  static_data:
-  media_data:
-
-networks:
-  app_network:
-    driver: bridge
-COMPOSE_EOF
-
 # Backend Dockerfile
 mkdir -p backend
 cat > backend/Dockerfile << 'DOCKERFILE_EOF'
@@ -237,76 +125,6 @@ EXPOSE 3000
 CMD ["npm", "start"]
 DOCKERFILE_EOF
 
-# Nginx конфигурация
-cat > nginx.conf << 'NGINX_EOF'
-upstream backend {
-    server backend:8000;
-}
-
-upstream frontend {
-    server frontend:3000;
-}
-
-server {
-    listen 80;
-    server_name _;
-    
-    # Let Encrypt для SSL
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    
-    # Статические файлы
-    location /static/ {
-        alias /var/www/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # Медиа файлы
-    location /media/ {
-        alias /var/www/media/;
-        expires 30d;
-    }
-    
-    # API запросы
-    location /api/ {
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # WebSocket поддержка
-    location /ws/ {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-    
-    # Admin
-    location /admin/ {
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # Frontend
-    location / {
-        proxy_pass http://frontend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-NGINX_EOF
-
 # .env файл
 cat > .env << 'ENV_EOF'
 # Django
@@ -332,6 +150,103 @@ REDIS_URL=redis://redis:6379/0
 CORS_ALLOWED_ORIGINS=http://78.17.34.15,http://localhost:3000
 ENV_EOF
 
+# docker-compose.prod.yml (без nginx, используем Caddy)
+cat > docker-compose.prod.yml << 'COMPOSE_EOF'
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: content_saas_db
+    environment:
+      POSTGRES_DB: content_saas
+      POSTGRES_USER: ${POSTGRES_USER:-content_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-content_pass_secure}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: content_saas_redis
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: content_saas_backend
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-content_user}:${POSTGRES_PASSWORD:-content_pass_secure}@db:5432/content_saas
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=False
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app_network
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: content_saas_celery
+    command: celery -A core worker -l info
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-content_user}:${POSTGRES_PASSWORD:-content_pass_secure}@db:5432/content_saas
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: content_saas_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+    depends_on:
+      - backend
+    networks:
+      - app_network
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
+
+networks:
+  app_network:
+    driver: bridge
+COMPOSE_EOF
+
 echo -e "${YELLOW}[6/8] Клонирование репозитория...${NC}"
 cd $APP_DIR
 git clone https://github.com/officialfindso-gif/samma.git . || {
@@ -350,12 +265,13 @@ echo -e "${GREEN}=========================================${NC}"
 echo -e "${GREEN}  Деплой завершен!${NC}"
 echo -e "${GREEN}=========================================${NC}"
 echo ""
-echo -e "Сервер доступен по адресу: ${YELLOW}http://78.17.34.15${NC}"
+echo -e "Backend: ${YELLOW}http://78.17.34.15:8000${NC}"
+echo -e "Frontend: ${YELLOW}http://78.17.34.15:3000${NC}"
 echo ""
 echo -e "${YELLOW}Важно:${NC}"
 echo -e "1. Обновите .env файл с вашими API ключами: ${YELLOW}$APP_DIR/.env${NC}"
 echo -e "2. Создайте суперпользователя: ${YELLOW}docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser${NC}"
-echo -e "3. Для SSL (HTTPS) настройте домен и запустите: ${YELLOW}certbot --nginx -d ваш-домен.com${NC}"
+echo -e "3. Настройте Caddy для проксирования (см. DEPLOY.md)"
 echo ""
 echo -e "${YELLOW}Полезные команды:${NC}"
 echo -e "  Логи: ${YELLOW}docker compose -f docker-compose.prod.yml logs -f${NC}"
