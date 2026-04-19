@@ -10,5 +10,7 @@ whitenoise==6.6.0
 gunicorn==23.0.0
 psycopg2-binary==2.9.9
 dj-database-url==1.0.0
-yt-dlp
 openai==1.12.0
+tenacity==8.2.3
+# yt-dlp - опционально, только для фолбэк-транскрибации
+# yt-dlp
