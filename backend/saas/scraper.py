@@ -15,6 +15,7 @@ from pathlib import Path
 # Импорты для транскрибации
 import yt_dlp
 from openai import OpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_log
 
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
@@ -26,6 +27,7 @@ _session: Optional[requests.Session] = None
 def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]:
     """
     Скачивает видео/аудио (YouTube, Instagram, TikTok) и отправляет в Whisper.
+    Реализует механизм повторных попыток при сетевых ошибках.
     """
     logger.info(f"Starting audio transcription for {platform}: {url}")
     output_file = f"temp_media_{platform}"
@@ -37,6 +39,8 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
         'quiet': True,
         'no_warnings': True,
         'merge_output_format': 'mp4', # Для Instagram лучше иметь контейнер
+        'socket_timeout': 30,
+        'retries': 3,
     }
 
     try:
@@ -56,13 +60,9 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
         
         logger.info(f"Media downloaded to: {filename} ({os.path.getsize(filename) / 1024 / 1024:.2f} MB)")
 
-        # 2. Отправляем в OpenAI Whisper (поддерживает и видео, и аудио)
+        # 2. Отправляем в OpenAI Whisper с retry-логикой
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        with open(filename, "rb") as media_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=media_file
-            )
+        transcript = _transcribe_with_retry(client, filename)
         
         logger.info("Transcription successful!")
         return transcript.text
@@ -80,6 +80,25 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
                 os.remove(f)
         except Exception:
             pass
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((requests.exceptions.RequestException, Exception)),
+    before=before_log(logger, logging.INFO),
+    reraise=True
+)
+def _transcribe_with_retry(client, filename: str):
+    """
+    Обертка вокруг вызова Whisper API с механизмом повторных попыток.
+    """
+    with open(filename, "rb") as media_file:
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1", 
+            file=media_file
+        )
+    return transcript
 
 
 def _maybe_transcribe_or_fallback(url: str, platform: str, fallback_text: str = "") -> str:

@@ -1,33 +1,4 @@
 ```
-# Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-.venv/
-.env
-.env.local
-.env.*
-
-# Dependencies
-pip-wheel-metadata/
-wheels/
-*.egg-info/
-*.egg
-
-# Testing
-.coverage
-coverage/
-htmlcov/
-.pytest_cache/
-.hypothesis/
-
-# Distribution / packaging
-dist/
-build/
-*.egg
-*.tar.gz
-*.whl
 ```
