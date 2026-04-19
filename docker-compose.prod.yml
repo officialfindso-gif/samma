@@ -1,0 +1,91 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: content_saas_db
+    environment:
+      POSTGRES_DB: content_saas
+      POSTGRES_USER: content_user
+      POSTGRES_PASSWORD: IDincd/FVZaz/22XrXsEtqFIeGXuemGTzeE/d4qpvBc=
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: content_saas_redis
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: content_saas_backend
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://content_user:IDincd%2FFVZaz%2F22XrXsEtqFIeGXuemGTzeE%2Fd4qpvBc%3D@db:5432/content_saas
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=False
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app_network
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: content_saas_celery
+    command: celery -A core worker -l info
+    volumes:
+      - media_data:/app/media
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://content_user:IDincd%2FFVZaz%2F22XrXsEtqFIeGXuemGTzeE%2Fd4qpvBc%3D@db:5432/content_saas
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: content_saas_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.78.17.34.15.sslip.io/api
+    depends_on:
+      - backend
+    networks:
+      - app_network
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
+
+networks:
+  app_network:
+    driver: bridge

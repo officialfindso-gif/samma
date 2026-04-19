@@ -1,0 +1,19 @@
+[0;1;31m×[0m caddy.service - Caddy
+     Loaded: loaded (/lib/systemd/system/caddy.service; enabled; vendor preset: enabled)
+     Active: [0;1;31mfailed[0m (Result: exit-code) since Mon 2026-04-13 00:00:32 MSK; 1min 28s ago
+       Docs: https://caddyserver.com/docs/
+    Process: 19233 ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile [0;1;31m(code=exited, status=1/FAILURE)[0m
+   Main PID: 19233 (code=exited, status=1/FAILURE)
+     Status: "loading new config: http app module: start: starting HTTP/3 QUIC listener: listen udp :443: bind: address already in use"
+        CPU: 141ms
+
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.4281535,"logger":"http.auto_https","msg":"server is listening only on the HTTPS port but has no TLS connection policies; adding one to enable TLS","server_name":"srv0","https_port":443}
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.429194,"logger":"http.auto_https","msg":"enabling automatic HTTP->HTTPS redirects","server_name":"srv0"}
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.4319923,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.4520488,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x22e9836e1300"}
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.4535475,"logger":"tls.cache.maintenance","msg":"stopped background certificate maintenance","cache":"0x22e9836e1300"}
+Apr 13 00:00:32 3686.com caddy[19233]: {"level":"info","ts":1776027632.4541998,"logger":"http","msg":"servers shutting down with eternal grace period"}
+Apr 13 00:00:32 3686.com caddy[19233]: Error: loading initial config: loading new config: http app module: start: starting HTTP/3 QUIC listener: listen udp :443: bind: address already in use
+Apr 13 00:00:32 3686.com systemd[1]: [0;1;39m[0;1;31m[0;1;39mcaddy.service: Main process exited, code=exited, status=1/FAILURE[0m
+Apr 13 00:00:32 3686.com systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mcaddy.service: Failed with result 'exit-code'.[0m
+Apr 13 00:00:32 3686.com systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start Caddy.[0m
