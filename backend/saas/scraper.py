@@ -1,7 +1,7 @@
 """
 Модуль для парсинга контента из социальных сетей через ScrapeCreators API.
 Поддерживает как отдельные посты, так и профили (все Reels/видео).
-ScrapeCreators может отдавать готовую транскрипцию - используем её в приоритете.
+ScrapeCreators отдаёт готовую транскрипцию - используем её.
 """
 import os
 import logging
@@ -13,10 +13,6 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Импорты для транскрибации (фолбэк)
-from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_log
-
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 logger = logging.getLogger(__name__)
@@ -24,96 +20,9 @@ logger = logging.getLogger(__name__)
 _session: Optional[requests.Session] = None
 
 
-def transcribe_media_audio_fallback(url: str, platform: str = 'unknown') -> Optional[str]:
-    """
-    Фолбэк-транскрибация через OpenAI Whisper API.
-    Используется ТОЛЬКО если ScrapeCreators не вернул транскрипцию.
-    Скачивает видео/аудио и отправляет в Whisper.
-    Реализует механизм повторных попыток при сетевых ошибках.
-    """
-    logger.warning(f"Using fallback transcription for {platform}: {url}")
-    
-    # Для работы fallback нужен yt_dlp - проверяем наличие
-    try:
-        import yt_dlp
-    except ImportError:
-        logger.error("yt_dlp not installed - fallback transcription unavailable")
-        return None
-    
-    output_file = f"temp_media_{platform}"
-    
-    # Опции для yt-dlp
-    ydl_opts = {
-        'format': 'bestaudio/best' if platform == 'youtube' else 'bestvideo+bestaudio/best',
-        'outtmpl': output_file + '.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'merge_output_format': 'mp4',
-        'socket_timeout': 30,
-        'retries': 3,
-    }
-
-    try:
-        # 1. Скачиваем медиа
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            
-            # Проверка существования файла (иногда расширение меняется)
-            if not os.path.exists(filename):
-                import glob
-                files = glob.glob(f"{output_file}.*")
-                if files:
-                    filename = files[0]
-                else:
-                    raise FileNotFoundError("Media file not found after download")
-        
-        logger.info(f"Media downloaded to: {filename} ({os.path.getsize(filename) / 1024 / 1024:.2f} MB)")
-
-        # 2. Отправляем в OpenAI Whisper с retry-логикой
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        transcript = _transcribe_with_retry(client, filename)
-        
-        logger.info("Fallback transcription successful!")
-        return transcript.text
-
-    except Exception as e:
-        logger.error(f"Fallback transcription failed for {platform}: {e}")
-        return None
-    finally:
-        # 3. Чистим за собой
-        try:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-            import glob
-            for f in glob.glob(f"{output_file}.*"):
-                os.remove(f)
-        except Exception:
-            pass
-
-
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((requests.exceptions.RequestException, Exception)),
-    before=before_log(logger, logging.INFO),
-    reraise=True
-)
-def _transcribe_with_retry(client, filename: str):
-    """
-    Обертка вокруг вызова Whisper API с механизмом повторных попыток.
-    """
-    with open(filename, "rb") as media_file:
-        transcript = client.audio.transcriptions.create(
-            model="whisper-1", 
-            file=media_file
-        )
-    return transcript
-
-
 def _maybe_transcribe_or_fallback(url: str, platform: str, fallback_text: str = "") -> str:
     """
-    Пытаемся получить транскрипцию из ScrapeCreators API (уже встроена в ответ).
+    Возвращает транскрипцию из ScrapeCreators API (уже встроенную в ответ).
     Если её нет — используем fallback_text (описание/caption).
     Фолбэк-транскрибация через yt-dlp + Whisper удалена для экономии ресурсов.
     """
