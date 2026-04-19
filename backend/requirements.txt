@@ -11,3 +11,4 @@ gunicorn==23.0.0
 psycopg2-binary==2.9.9
 dj-database-url==1.0.0
 yt-dlp
+openai==1.12.0

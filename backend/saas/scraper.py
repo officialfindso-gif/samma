@@ -82,15 +82,20 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
             pass
 
 
-def _maybe_transcribe_when_empty(caption: str, url: str, platform: str) -> str:
+def _maybe_transcribe_or_fallback(url: str, platform: str, fallback_text: str = "") -> str:
     """
-    Если caption пустой, пробуем Whisper и возвращаем транскрипт как caption.
-    Ошибки не пробрасываем, возвращаем исходный caption при сбое.
+    Всегда пробуем транскрибировать аудио/видео.
+    Если транскрибация не удалась — возвращаем fallback_text (описание/caption).
     """
-    if caption:
-        return caption
+    logger.info(f"Attempting transcription for {platform}: {url}")
     transcript = transcribe_media_audio(url, platform)
-    return transcript or caption
+    
+    if transcript and transcript.strip():
+        logger.info(f"Transcription successful for {platform}: {len(transcript)} chars")
+        return transcript
+    
+    logger.warning(f"Transcription failed for {platform}, using fallback text ({len(fallback_text or '')} chars)")
+    return fallback_text or ""
 
 
 class ScrapeError(Exception):
@@ -609,9 +614,9 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
 
     if platform == 'youtube' and 'title' in data:
         caption_text = data.get('description', '')
-
-        # 🚀 Если описания нет — пробуем транскрибировать аудио
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'youtube')
+        
+        # 🚀 Всегда пробуем транскрибировать, fallback на описание
+        caption_text = _maybe_transcribe_or_fallback(url, 'youtube', caption_text)
         
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
@@ -647,9 +652,8 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
             except ValueError:
                 pass
         author_followers = data.get('author', {}).get('followers')
-        # Если это видеопост и описание пустое — пробуем транскрибировать
-        # Признаков видео в ответе может не быть, поэтому вызываем только если caption пустой
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'linkedin')
+        # 🚀 Всегда пробуем транскрибировать, fallback на описание
+        caption_text = _maybe_transcribe_or_fallback(url, 'linkedin', caption_text)
         has_audio = None
         is_video = None
         views_count = None
@@ -671,16 +675,14 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         is_video = True
         published_at = None
         saves_count = stats.get('collect_count')
-        # Если описание пустое — транскрибируем
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'tiktok')
+        # 🚀 Всегда пробуем транскрибировать, fallback на описание
+        caption_text = _maybe_transcribe_or_fallback(url, 'tiktok', caption_text)
     else:
         caption_edges = media_data.get('edge_media_to_caption', {}).get('edges', [])
         caption_text = caption_edges[0].get('node', {}).get('text', '') if caption_edges else ''
 
-        # 🚀 Instagram: If no caption, transcribe audio
-        if not caption_text and platform == 'instagram':
-            logger.info(f"Instagram caption is empty for {url}, trying Whisper transcription...")
-            caption_text = transcribe_media_audio(url, 'instagram') or ""
+        # 🚀 Instagram: всегда пробуем транскрибировать, fallback на caption
+        caption_text = _maybe_transcribe_or_fallback(url, 'instagram', caption_text)
             
         owner = media_data.get('owner', {})
         author = owner.get('username', 'unknown')
@@ -726,9 +728,12 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         media_url = media_data.get('video_url') or media_data.get('display_url') or url
         play_count = media_data.get('video_play_count')
     
+    # Сохраняем транскрипт отдельно (если транскрибация прошла успешно)
+    transcript_text = caption_text if caption_text and len(caption_text) > len(data.get('description', '') or '') else ''
+    
     return {
         'caption': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
-        'transcript': data.get('transcript', ''),
+        'transcript': transcript_text,
         'media_url': media_url,
         'author': author,
         'platform': platform,

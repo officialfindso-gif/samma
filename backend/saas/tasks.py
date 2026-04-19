@@ -76,7 +76,7 @@ def scrape_and_process_post(self, post_id: int):
             )
             logger.info(f"Profile scraping: {profile.get(count_key, 0)} {platform_name} found")
             
-            for i, item in enumerate(profile.get('posts', [])[:settings.max_parse_depth]):  # лимит из настроек
+            for i, item in enumerate(profile.get('posts', [])[:sys_settings.max_parse_depth]):  # лимит из настроек
                 # Данные зависят от платформы
                 if platform == 'instagram':
                     item_data = item.get('data', {})
@@ -89,21 +89,21 @@ def scrape_and_process_post(self, post_id: int):
                 elif platform == 'tiktok':
                     title = f"{profile.get('handle', '')} - Video #{i+1}"
                     original_text = item.get('desc', '')
-                    transcript = ''
+                    transcript = item.get('transcript', '')  # Теперь транскрипт есть
                     views = item.get('views')
                     likes = item.get('likes')
                     comments = item.get('comments')
                 elif platform == 'youtube':
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Video #{i+1}"
                     original_text = item.get('description', '')
-                    transcript = ''
+                    transcript = item.get('transcript', '')  # Теперь транскрипт есть
                     views = item.get('views')
                     likes = item.get('likes')
                     comments = item.get('comments')
                 else:  # linkedin
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Post #{i+1}"
                     original_text = item.get('description', '')
-                    transcript = ''
+                    transcript = item.get('transcript', '')  # Теперь транскрипт есть
                     views = None
                     likes = item.get('likes')
                     comments = item.get('comments')
