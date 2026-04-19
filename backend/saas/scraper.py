@@ -1,6 +1,7 @@
 """
 Модуль для парсинга контента из социальных сетей через ScrapeCreators API.
 Поддерживает как отдельные посты, так и профили (все Reels/видео).
+ScrapeCreators отдаёт готовую транскрипцию - используем её.
 """
 import os
 import logging
@@ -12,10 +13,6 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Импорты для транскрибации
-import yt_dlp
-from openai import OpenAI
-
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 logger = logging.getLogger(__name__)
@@ -23,74 +20,16 @@ logger = logging.getLogger(__name__)
 _session: Optional[requests.Session] = None
 
 
-def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]:
+def _maybe_transcribe_or_fallback(url: str, platform: str, fallback_text: str = "") -> str:
     """
-    Скачивает видео/аудио (YouTube, Instagram, TikTok) и отправляет в Whisper.
+    Возвращает транскрипцию из ScrapeCreators API (уже встроенную в ответ).
+    Если её нет — используем fallback_text (описание/caption).
+    Фолбэк-транскрибация через yt-dlp + Whisper удалена для экономии ресурсов.
     """
-    logger.info(f"Starting audio transcription for {platform}: {url}")
-    output_file = f"temp_media_{platform}"
-    
-    # Опции для yt-dlp
-    ydl_opts = {
-        'format': 'bestaudio/best' if platform == 'youtube' else 'bestvideo+bestaudio/best',
-        'outtmpl': output_file + '.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'merge_output_format': 'mp4', # Для Instagram лучше иметь контейнер
-    }
-
-    try:
-        # 1. Скачиваем медиа
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            
-            # Проверка существования файла (иногда расширение меняется)
-            if not os.path.exists(filename):
-                import glob
-                files = glob.glob(f"{output_file}.*")
-                if files:
-                    filename = files[0]
-                else:
-                    raise FileNotFoundError("Media file not found after download")
-        
-        logger.info(f"Media downloaded to: {filename} ({os.path.getsize(filename) / 1024 / 1024:.2f} MB)")
-
-        # 2. Отправляем в OpenAI Whisper (поддерживает и видео, и аудио)
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        with open(filename, "rb") as media_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=media_file
-            )
-        
-        logger.info("Transcription successful!")
-        return transcript.text
-
-    except Exception as e:
-        logger.error(f"Transcription failed for {platform}: {e}")
-        return None
-    finally:
-        # 3. Чистим за собой
-        try:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-            import glob
-            for f in glob.glob(f"{output_file}.*"):
-                os.remove(f)
-        except Exception:
-            pass
-
-
-def _maybe_transcribe_when_empty(caption: str, url: str, platform: str) -> str:
-    """
-    Если caption пустой, пробуем Whisper и возвращаем транскрипт как caption.
-    Ошибки не пробрасываем, возвращаем исходный caption при сбое.
-    """
-    if caption:
-        return caption
-    transcript = transcribe_media_audio(url, platform)
-    return transcript or caption
+    # Транскрипция уже должна быть в данных от ScrapeCreators
+    # Эта функция теперь просто возвращает fallback_text по умолчанию
+    logger.info(f"Using transcript from ScrapeCreators or fallback for {platform}")
+    return fallback_text or ""
 
 
 class ScrapeError(Exception):
@@ -608,10 +547,11 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     media_data = data.get('data', {}).get('xdt_shortcode_media', {})
 
     if platform == 'youtube' and 'title' in data:
-        caption_text = data.get('description', '')
-
-        # 🚀 Если описания нет — пробуем транскрибировать аудио
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'youtube')
+        # 🚀 ScrapeCreators может вернуть готовую транскрипцию в поле transcript/captions
+        transcript_from_api = data.get('transcript') or data.get('captions') or data.get('automatic_captions')
+        
+        # Если API вернул транскрипцию - используем её, иначе берём описание
+        caption_text = transcript_from_api if transcript_from_api else data.get('description', '')
         
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
@@ -632,7 +572,10 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         saves_count = None
         author_followers = None
     elif platform == 'linkedin' and 'likeCount' in data:
-        caption_text = data.get('description', '') or data.get('text', '')
+        # LinkedIn: проверяем наличие транскрипции от API
+        transcript_from_api = data.get('transcript') or data.get('captions')
+        caption_text = transcript_from_api if transcript_from_api else (data.get('description', '') or data.get('text', ''))
+        
         author = data.get('author', {}).get('name', 'unknown')
         likes_count = data.get('likeCount')
         comments_count = data.get('commentCount')
@@ -647,15 +590,16 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
             except ValueError:
                 pass
         author_followers = data.get('author', {}).get('followers')
-        # Если это видеопост и описание пустое — пробуем транскрибировать
-        # Признаков видео в ответе может не быть, поэтому вызываем только если caption пустой
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'linkedin')
         has_audio = None
         is_video = None
         views_count = None
     elif platform == 'tiktok' and 'aweme_detail' in data:
         detail = data.get('aweme_detail', {})
-        caption_text = detail.get('desc', '')
+        
+        # TikTok: проверяем наличие транскрипции от API
+        transcript_from_api = detail.get('transcript') or detail.get('captions') or detail.get('desc')
+        caption_text = transcript_from_api if transcript_from_api else detail.get('desc', '')
+        
         author = detail.get('author', {}).get('unique_id', 'unknown')
         stats = detail.get('statistics', {})
         likes_count = stats.get('digg_count')
@@ -671,16 +615,14 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         is_video = True
         published_at = None
         saves_count = stats.get('collect_count')
-        # Если описание пустое — транскрибируем
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'tiktok')
     else:
         caption_edges = media_data.get('edge_media_to_caption', {}).get('edges', [])
         caption_text = caption_edges[0].get('node', {}).get('text', '') if caption_edges else ''
 
-        # 🚀 Instagram: If no caption, transcribe audio
-        if not caption_text and platform == 'instagram':
-            logger.info(f"Instagram caption is empty for {url}, trying Whisper transcription...")
-            caption_text = transcribe_media_audio(url, 'instagram') or ""
+        # Instagram: проверяем наличие транскрипции от API
+        transcript_from_api = media_data.get('transcript') or media_data.get('captions')
+        if transcript_from_api:
+            caption_text = transcript_from_api
             
         owner = media_data.get('owner', {})
         author = owner.get('username', 'unknown')
@@ -726,9 +668,12 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         media_url = media_data.get('video_url') or media_data.get('display_url') or url
         play_count = media_data.get('video_play_count')
     
+    # Сохраняем транскрипт отдельно (если транскрибация прошла успешно)
+    transcript_text = caption_text if caption_text and len(caption_text) > len(data.get('description', '') or '') else ''
+    
     return {
         'caption': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
-        'transcript': data.get('transcript', ''),
+        'transcript': transcript_text,
         'media_url': media_url,
         'author': author,
         'platform': platform,
