@@ -1,6 +1,7 @@
 """
 Модуль для парсинга контента из социальных сетей через ScrapeCreators API.
 Поддерживает как отдельные посты, так и профили (все Reels/видео).
+ScrapeCreators может отдавать готовую транскрипцию - используем её в приоритете.
 """
 import os
 import logging
@@ -12,8 +13,7 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Импорты для транскрибации
-import yt_dlp
+# Импорты для транскрибации (фолбэк)
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_log
 
@@ -24,12 +24,22 @@ logger = logging.getLogger(__name__)
 _session: Optional[requests.Session] = None
 
 
-def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]:
+def transcribe_media_audio_fallback(url: str, platform: str = 'unknown') -> Optional[str]:
     """
-    Скачивает видео/аудио (YouTube, Instagram, TikTok) и отправляет в Whisper.
+    Фолбэк-транскрибация через OpenAI Whisper API.
+    Используется ТОЛЬКО если ScrapeCreators не вернул транскрипцию.
+    Скачивает видео/аудио и отправляет в Whisper.
     Реализует механизм повторных попыток при сетевых ошибках.
     """
-    logger.info(f"Starting audio transcription for {platform}: {url}")
+    logger.warning(f"Using fallback transcription for {platform}: {url}")
+    
+    # Для работы fallback нужен yt_dlp - проверяем наличие
+    try:
+        import yt_dlp
+    except ImportError:
+        logger.error("yt_dlp not installed - fallback transcription unavailable")
+        return None
+    
     output_file = f"temp_media_{platform}"
     
     # Опции для yt-dlp
@@ -38,7 +48,7 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
         'outtmpl': output_file + '.%(ext)s',
         'quiet': True,
         'no_warnings': True,
-        'merge_output_format': 'mp4', # Для Instagram лучше иметь контейнер
+        'merge_output_format': 'mp4',
         'socket_timeout': 30,
         'retries': 3,
     }
@@ -64,11 +74,11 @@ def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         transcript = _transcribe_with_retry(client, filename)
         
-        logger.info("Transcription successful!")
+        logger.info("Fallback transcription successful!")
         return transcript.text
 
     except Exception as e:
-        logger.error(f"Transcription failed for {platform}: {e}")
+        logger.error(f"Fallback transcription failed for {platform}: {e}")
         return None
     finally:
         # 3. Чистим за собой
@@ -103,17 +113,13 @@ def _transcribe_with_retry(client, filename: str):
 
 def _maybe_transcribe_or_fallback(url: str, platform: str, fallback_text: str = "") -> str:
     """
-    Всегда пробуем транскрибировать аудио/видео.
-    Если транскрибация не удалась — возвращаем fallback_text (описание/caption).
+    Пытаемся получить транскрипцию из ScrapeCreators API (уже встроена в ответ).
+    Если её нет — используем fallback_text (описание/caption).
+    Фолбэк-транскрибация через yt-dlp + Whisper удалена для экономии ресурсов.
     """
-    logger.info(f"Attempting transcription for {platform}: {url}")
-    transcript = transcribe_media_audio(url, platform)
-    
-    if transcript and transcript.strip():
-        logger.info(f"Transcription successful for {platform}: {len(transcript)} chars")
-        return transcript
-    
-    logger.warning(f"Transcription failed for {platform}, using fallback text ({len(fallback_text or '')} chars)")
+    # Транскрипция уже должна быть в данных от ScrapeCreators
+    # Эта функция теперь просто возвращает fallback_text по умолчанию
+    logger.info(f"Using transcript from ScrapeCreators or fallback for {platform}")
     return fallback_text or ""
 
 
@@ -632,10 +638,11 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     media_data = data.get('data', {}).get('xdt_shortcode_media', {})
 
     if platform == 'youtube' and 'title' in data:
-        caption_text = data.get('description', '')
+        # 🚀 ScrapeCreators может вернуть готовую транскрипцию в поле transcript/captions
+        transcript_from_api = data.get('transcript') or data.get('captions') or data.get('automatic_captions')
         
-        # 🚀 Всегда пробуем транскрибировать, fallback на описание
-        caption_text = _maybe_transcribe_or_fallback(url, 'youtube', caption_text)
+        # Если API вернул транскрипцию - используем её, иначе берём описание
+        caption_text = transcript_from_api if transcript_from_api else data.get('description', '')
         
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
@@ -656,7 +663,10 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         saves_count = None
         author_followers = None
     elif platform == 'linkedin' and 'likeCount' in data:
-        caption_text = data.get('description', '') or data.get('text', '')
+        # LinkedIn: проверяем наличие транскрипции от API
+        transcript_from_api = data.get('transcript') or data.get('captions')
+        caption_text = transcript_from_api if transcript_from_api else (data.get('description', '') or data.get('text', ''))
+        
         author = data.get('author', {}).get('name', 'unknown')
         likes_count = data.get('likeCount')
         comments_count = data.get('commentCount')
@@ -671,14 +681,16 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
             except ValueError:
                 pass
         author_followers = data.get('author', {}).get('followers')
-        # 🚀 Всегда пробуем транскрибировать, fallback на описание
-        caption_text = _maybe_transcribe_or_fallback(url, 'linkedin', caption_text)
         has_audio = None
         is_video = None
         views_count = None
     elif platform == 'tiktok' and 'aweme_detail' in data:
         detail = data.get('aweme_detail', {})
-        caption_text = detail.get('desc', '')
+        
+        # TikTok: проверяем наличие транскрипции от API
+        transcript_from_api = detail.get('transcript') or detail.get('captions') or detail.get('desc')
+        caption_text = transcript_from_api if transcript_from_api else detail.get('desc', '')
+        
         author = detail.get('author', {}).get('unique_id', 'unknown')
         stats = detail.get('statistics', {})
         likes_count = stats.get('digg_count')
@@ -694,14 +706,14 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         is_video = True
         published_at = None
         saves_count = stats.get('collect_count')
-        # 🚀 Всегда пробуем транскрибировать, fallback на описание
-        caption_text = _maybe_transcribe_or_fallback(url, 'tiktok', caption_text)
     else:
         caption_edges = media_data.get('edge_media_to_caption', {}).get('edges', [])
         caption_text = caption_edges[0].get('node', {}).get('text', '') if caption_edges else ''
 
-        # 🚀 Instagram: всегда пробуем транскрибировать, fallback на caption
-        caption_text = _maybe_transcribe_or_fallback(url, 'instagram', caption_text)
+        # Instagram: проверяем наличие транскрипции от API
+        transcript_from_api = media_data.get('transcript') or media_data.get('captions')
+        if transcript_from_api:
+            caption_text = transcript_from_api
             
         owner = media_data.get('owner', {})
         author = owner.get('username', 'unknown')
