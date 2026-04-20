@@ -85,7 +85,25 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
       {post.original_text && (
         <div className="mb-2">
           <p className="text-xs text-gray-400 line-clamp-2">
-            {post.original_text}
+            <span className="font-semibold text-gray-300">Оригинал:</span> {post.original_text}
+          </p>
+        </div>
+      )}
+
+      {/* Описание */}
+      {post.description && (
+        <div className="mb-2">
+          <p className="text-xs text-gray-400 line-clamp-2">
+            <span className="font-semibold text-gray-300">Описание:</span> {post.description}
+          </p>
+        </div>
+      )}
+
+      {/* Транскрипт */}
+      {post.transcript && (
+        <div className="mb-2">
+          <p className="text-xs text-gray-400 line-clamp-2">
+            <span className="font-semibold text-gray-300">Транскрипт:</span> {post.transcript}
           </p>
         </div>
       )}
@@ -96,13 +114,6 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
           <p className="text-xs text-gray-300 line-clamp-2">
             {post.generated_caption}
           </p>
-        </div>
-      )}
-
-      {/* Индикатор транскрипта */}
-      {post.transcript && (
-        <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-[11px] text-slate-200">
-          🎧 Есть транскрипт
         </div>
       )}
 
@@ -157,6 +168,22 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
           <span className="text-xs text-gray-700 animate-pulse">
             Обработка...
           </span>
+        )}
+
+        {post.status === "ready" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onProcess(post.id);
+            }}
+            className="
+              px-2 lg:px-3 py-1 text-xs font-medium rounded
+              bg-indigo-600 hover:bg-indigo-700 text-white
+              transition-colors whitespace-nowrap flex-shrink-0
+            "
+          >
+            🤖 AI Обработка
+          </button>
         )}
       </div>
     </div>

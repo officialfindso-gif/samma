@@ -236,6 +236,7 @@ export interface Post {
   platform: string;
   status: string;
   original_text: string;
+  description: string;
   transcript: string;
   generated_caption: string;
   generated_script: string;
