@@ -74,7 +74,7 @@ export default function AppPage() {
   });
 
   const [columnOrder, setColumnOrder] = useState<string[]>([
-    "checkbox", "source", "original", "result", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
+    "checkbox", "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
   ]);
 
   const columnLabels: Record<string, string> = {
@@ -82,6 +82,7 @@ export default function AppPage() {
     source: "Источник",
     original: "Оригинал",
     result: "Результат",
+    description: "Описание",
     views: "Просмотры",
     likes: "Лайки",
     comments: "Комментарии",
