@@ -158,6 +158,22 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
             Обработка...
           </span>
         )}
+
+        {post.status === "ready" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onProcess(post.id);
+            }}
+            className="
+              px-2 lg:px-3 py-1 text-xs font-medium rounded
+              bg-indigo-600 hover:bg-indigo-700 text-white
+              transition-colors whitespace-nowrap flex-shrink-0
+            "
+          >
+            🤖 AI Обработка
+          </button>
+        )}
       </div>
     </div>
   );
