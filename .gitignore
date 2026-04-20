@@ -1,62 +1,28 @@
 ```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.ENV
-.python-version
-.pytest_cache/
-.mypy_cache/
-.coverage
-coverage/
-htmlcov/
+# Dependencies
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/.mypy_cache/
+backend/.pytest_cache/
+
+# Environment
+backend/.env
+backend/.env.local
+backend/*.env.*
+
+# Logs and temp files
+backend/*.log
+backend/*.tmp
+backend/*.swp
+
+# Coverage reports
+backend/coverage/
+backend/htmlcov/
+backend/.coverage
 
 # Build artifacts
-build/
-dist/
-*.egg
-*.egg-info/
-*.so
-*.dylib
-*.dll
-*.exe
-*.o
-*.obj
-*.out
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-dist/
-build/
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment variables
-.env
-.env.local
-.env.*
-!.env.example
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# OS
-.DS_Store
-Thumbs.db
+backend/dist/
+backend/build/
+backend/target/
 ```
