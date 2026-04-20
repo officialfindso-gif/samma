@@ -82,6 +82,7 @@ def scrape_and_process_post(self, post_id: int):
                     item_data = item.get('data', {})
                     title = f"{profile.get('handle', '')} - Reel #{i+1}"
                     original_text = item_data.get('caption', '') or item_data.get('description', '')
+                    description = item_data.get('description', '') or item_data.get('caption', '')
                     transcript = item_data.get('transcript', '')
                     views = item.get('views')
                     likes = item.get('likes')
@@ -89,6 +90,7 @@ def scrape_and_process_post(self, post_id: int):
                 elif platform == 'tiktok':
                     title = f"{profile.get('handle', '')} - Video #{i+1}"
                     original_text = item.get('desc', '')
+                    description = item.get('desc', '')
                     transcript = ''
                     views = item.get('views')
                     likes = item.get('likes')
@@ -96,6 +98,7 @@ def scrape_and_process_post(self, post_id: int):
                 elif platform == 'youtube':
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Video #{i+1}"
                     original_text = item.get('description', '')
+                    description = item.get('description', '')
                     transcript = ''
                     views = item.get('views')
                     likes = item.get('likes')
@@ -103,6 +106,7 @@ def scrape_and_process_post(self, post_id: int):
                 else:  # linkedin
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Post #{i+1}"
                     original_text = item.get('description', '')
+                    description = item.get('description', '')
                     transcript = ''
                     views = None
                     likes = item.get('likes')
@@ -115,6 +119,7 @@ def scrape_and_process_post(self, post_id: int):
                     platform=platform,
                     status='new',
                     original_text=original_text,
+                    description=description,
                     transcript=transcript,
                     views_count=views,
                     likes_count=likes,
@@ -134,6 +139,7 @@ def scrape_and_process_post(self, post_id: int):
         # Одиночный пост - сохраняем метрики
         with transaction.atomic():
             post.original_text = scraped_data.get('caption', '')
+            post.description = scraped_data.get('description', '')
             post.transcript = scraped_data.get('transcript', '')
             post.platform = scraped_data.get('platform', post.platform)
             post.views_count = scraped_data.get('views_count')
@@ -149,7 +155,7 @@ def scrape_and_process_post(self, post_id: int):
             post.has_audio = scraped_data.get('has_audio')
             post.is_video = scraped_data.get('is_video')
             post.save(update_fields=[
-                'original_text', 'transcript', 'platform',
+                'original_text', 'description', 'transcript', 'platform',
                 'views_count', 'likes_count', 'comments_count', 'shares_count',
                 'engagement_rate', 'video_duration', 'published_at',
                 'play_count', 'saves_count', 'author_followers', 'has_audio', 'is_video',

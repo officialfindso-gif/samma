@@ -241,6 +241,7 @@ export interface Post {
   generated_script: string;
   generated_title: string;
   generated_description: string;
+  description: string;
   error_message: string;
   // Метрики вирусности
   views_count: number | null;

@@ -211,6 +211,7 @@ class Post(models.Model):
     generated_script = models.TextField(blank=True)
     generated_title = models.TextField(blank=True)
     generated_description = models.TextField(blank=True)
+    description = models.TextField(blank=True, help_text='Описание поста/видео')
 
     # Метрики вирусности
     views_count = models.BigIntegerField(null=True, blank=True, help_text='Количество просмотров')

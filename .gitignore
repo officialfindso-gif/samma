@@ -1,38 +1,5 @@
-```gitignore
-# Dependencies
-node_modules/
-.pnpm-store/
-.yarn/
-yarn.lock
-package-lock.json
-
-# Build outputs
-dist/
-build/
-.next/
-.nuxt/
-out/
-
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-.env.*
-!.env.example
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Python (if applicable)
+```
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -41,93 +8,55 @@ __pycache__/
 env/
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git/modules/
-*.sublime-workspace
-.pytest_cache/
-.hypothesis/
-.DS_Store
-.eggs/
-eggs/
-parts/
-var/
-sdist/
-develop-eggs/
-.installed.cfg
-lib/
-lib64/
-.pydevproject
-.apt_generated/
-.settings/
-.isort.cfg
+.ENV
+.python-version
 .pytest_cache/
 .mypy_cache/
-.coverage.xml
+.coverage
+coverage/
 htmlcov/
-.landscape.yaml
-.pyup.yml
-.requirements.bak
-.pyre/
-.pytype/
-cython_debug/
 
-# Node.js (if applicable)
+# Build artifacts
+build/
+dist/
+*.egg
+*.egg-info/
+*.so
+*.dylib
+*.dll
+*.exe
+*.o
+*.obj
+*.out
+
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.sass-cache/
-connect.lock
-.nyc_output
-coverage/
-*.lcov
-.nyc_output/
-coverage/
-lib-cov/
-*.pid
-*.seed
-*.pid.lock
-pids/
-logs/
+dist/
+build/
+
+# Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
-.yarn-integrity
-.yarn-metadata.json
-node-debug.log*
-node-debugger.log*
-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
 .DS_Store
 Thumbs.db
-.nyc_output/
-coverage/
-lib-cov/
-*.pid
-*.seed
-*.pid.lock
-pids/
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.yarn-integrity
-.yarn-metadata.json
-node-debug.log*
-node-debugger.log*
-debug.log*
 ```
