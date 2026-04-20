@@ -76,7 +76,7 @@ def scrape_and_process_post(self, post_id: int):
             )
             logger.info(f"Profile scraping: {profile.get(count_key, 0)} {platform_name} found")
             
-            for i, item in enumerate(profile.get('posts', [])[:settings.max_parse_depth]):  # лимит из настроек
+            for i, item in enumerate(profile.get('posts', [])[:sys_settings.max_parse_depth]):  # лимит из настроек
                 # Данные зависят от платформы
                 if platform == 'instagram':
                     item_data = item.get('data', {})
