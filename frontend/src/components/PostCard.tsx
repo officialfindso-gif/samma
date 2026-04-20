@@ -85,7 +85,25 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
       {post.original_text && (
         <div className="mb-2">
           <p className="text-xs text-gray-400 line-clamp-2">
-            {post.original_text}
+            <span className="font-semibold text-gray-300">Оригинал:</span> {post.original_text}
+          </p>
+        </div>
+      )}
+
+      {/* Описание */}
+      {post.description && (
+        <div className="mb-2">
+          <p className="text-xs text-gray-400 line-clamp-2">
+            <span className="font-semibold text-gray-300">Описание:</span> {post.description}
+          </p>
+        </div>
+      )}
+
+      {/* Транскрипт */}
+      {post.transcript && (
+        <div className="mb-2">
+          <p className="text-xs text-gray-400 line-clamp-2">
+            <span className="font-semibold text-gray-300">Транскрипт:</span> {post.transcript}
           </p>
         </div>
       )}
@@ -96,13 +114,6 @@ export default function PostCard({ post, onProcess, onSelect, isSelected }: Post
           <p className="text-xs text-gray-300 line-clamp-2">
             {post.generated_caption}
           </p>
-        </div>
-      )}
-
-      {/* Индикатор транскрипта */}
-      {post.transcript && (
-        <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded text-[11px] text-slate-200">
-          🎧 Есть транскрипт
         </div>
       )}
 

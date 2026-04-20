@@ -205,12 +205,13 @@ class Post(models.Model):
 
     error_message = models.TextField(blank=True)
 
-    original_text = models.TextField(blank=True)
-    transcript = models.TextField(blank=True)
+    original_text = models.TextField(blank=True, help_text='Оригинальный текст/описание из соцсети')
+    description = models.TextField(blank=True, help_text='Дополнительное описание (парсится отдельно)')
+    transcript = models.TextField(blank=True, help_text='Расшифровка аудио/видео через Whisper')
     generated_caption = models.TextField(blank=True)
     generated_script = models.TextField(blank=True)
     generated_title = models.TextField(blank=True)
-    generated_description = models.TextField(blank=True)
+    generated_description = models.TextField(blank=True, help_text='Сгенерированное описание на основе оригинала через ChatGPT')
 
     # Метрики вирусности
     views_count = models.BigIntegerField(null=True, blank=True, help_text='Количество просмотров')
