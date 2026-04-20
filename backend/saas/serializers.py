@@ -46,7 +46,7 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             'id', 'workspace', 'social_account', 'title', 'source_url',
-            'platform', 'status', 'error_message', 'original_text', 'transcript',
+            'platform', 'status', 'error_message', 'original_text', 'description', 'transcript',
             'generated_caption', 'generated_script', 'generated_title',
             'generated_description', 'caption_prompt',
             'views_count', 'likes_count', 'comments_count', 'shares_count',
