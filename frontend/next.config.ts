@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
   reactCompiler: true,
+  // ❌ УДАЛИТЕ этот блок — он не поддерживается:
+  // experimental: {
+  //   outputFileTracingIncludes: { ... }
+  // },
 };
 
 export default nextConfig;

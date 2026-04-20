@@ -24,6 +24,9 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.78.17.34.15.sslip.io/
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/tsconfig.json ./
+# Устанавливаем sharp для оптимизации изображений (рекомендуется)
+RUN npm install sharp
 
 EXPOSE 3000
 CMD ["node", "server.js"]
