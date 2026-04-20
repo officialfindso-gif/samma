@@ -70,9 +70,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=https://api.78.17.34.15.sslip.io
     container_name: content_saas_frontend
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.78.17.34.15.sslip.io/api
+      - NEXT_PUBLIC_API_URL=https://api.78.17.34.15.sslip.io
     depends_on:
       - backend
     networks:
