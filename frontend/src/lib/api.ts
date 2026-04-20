@@ -1373,3 +1373,26 @@ export async function deletePostNote(
   }
 }
 
+
+/**
+ * Запустить AI-обработку поста (генерация контента из транскрибации)
+ */
+export async function processPostWithAI(
+  accessToken: string,
+  postId: number
+): Promise<{ message: string; status: string }> {
+  const res = await fetch(`${API_URL}/api/posts/${postId}/process_with_ai/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Ошибка обработки: ${res.status}`);
+  }
+
+  return res.json();
+}
