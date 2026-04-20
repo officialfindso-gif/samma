@@ -728,6 +728,7 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     
     return {
         'caption': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
+        'description': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
         'transcript': data.get('transcript', ''),
         'media_url': media_url,
         'author': author,

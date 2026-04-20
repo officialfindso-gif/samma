@@ -11,6 +11,7 @@ const DEFAULT_WIDTHS: ColumnWidths = {
   source: 128,
   original: 160,
   result: 160,
+  description: 160,
   views: 80,
   likes: 64,
   comments: 80,
@@ -28,6 +29,7 @@ const MIN_WIDTHS: ColumnWidths = {
   source: 80,
   original: 100,
   result: 100,
+  description: 100,
   views: 60,
   likes: 50,
   comments: 60,
@@ -159,6 +161,12 @@ export default function PostsList({
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
             {post.generated_caption ? <div className="text-xs text-gray-600 line-clamp-3">{post.generated_caption}</div> : post.status === 'ready' ? <div className="text-xs text-gray-500 italic flex items-center gap-1">⚪ Пусто</div> : null}
+          </div>
+        );
+      case "description":
+        return (
+          <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
+            {post.description ? <div className="text-xs text-gray-400 line-clamp-3">{post.description}</div> : <div className="text-xs text-gray-500 italic flex items-center gap-1">📝 Нет описания</div>}
           </div>
         );
       case "views":
