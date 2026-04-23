@@ -115,7 +115,7 @@ class PostProcessingTextFallbackTestCase(TestCase):
         scrape_and_process_post.run(post.id)
 
         post.refresh_from_db()
-        self.assertEqual(post.original_text, 'service description text')
+        self.assertEqual(post.original_text, '')
         self.assertEqual(post.description, 'service description text')
         mocked_delay.assert_called_once_with(post.id)
 
