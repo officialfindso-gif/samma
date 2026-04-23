@@ -7,90 +7,16 @@ import logging
 import re
 import time
 import requests
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pathlib import Path
-
-# Импорты для транскрибации
-import yt_dlp
-from openai import OpenAI
 
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 logger = logging.getLogger(__name__)
 
 _session: Optional[requests.Session] = None
-
-
-def transcribe_media_audio(url: str, platform: str = 'unknown') -> Optional[str]:
-    """
-    Скачивает видео/аудио (YouTube, Instagram, TikTok) и отправляет в Whisper.
-    """
-    logger.info(f"Starting audio transcription for {platform}: {url}")
-    output_file = f"temp_media_{platform}"
-    
-    # Опции для yt-dlp
-    ydl_opts = {
-        'format': 'bestaudio/best' if platform == 'youtube' else 'bestvideo+bestaudio/best',
-        'outtmpl': output_file + '.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'merge_output_format': 'mp4', # Для Instagram лучше иметь контейнер
-    }
-
-    try:
-        # 1. Скачиваем медиа
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            
-            # Проверка существования файла (иногда расширение меняется)
-            if not os.path.exists(filename):
-                import glob
-                files = glob.glob(f"{output_file}.*")
-                if files:
-                    filename = files[0]
-                else:
-                    raise FileNotFoundError("Media file not found after download")
-        
-        logger.info(f"Media downloaded to: {filename} ({os.path.getsize(filename) / 1024 / 1024:.2f} MB)")
-
-        # 2. Отправляем в OpenAI Whisper (поддерживает и видео, и аудио)
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        with open(filename, "rb") as media_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1", 
-                file=media_file
-            )
-        
-        logger.info("Transcription successful!")
-        return transcript.text
-
-    except Exception as e:
-        logger.error(f"Transcription failed for {platform}: {e}")
-        return None
-    finally:
-        # 3. Чистим за собой
-        try:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-            import glob
-            for f in glob.glob(f"{output_file}.*"):
-                os.remove(f)
-        except Exception:
-            pass
-
-
-def _maybe_transcribe_when_empty(caption: str, url: str, platform: str) -> str:
-    """
-    Если caption пустой, пробуем Whisper и возвращаем транскрипт как caption.
-    Ошибки не пробрасываем, возвращаем исходный caption при сбое.
-    """
-    if caption:
-        return caption
-    transcript = transcribe_media_audio(url, platform)
-    return transcript or caption
 
 
 class ScrapeError(Exception):
@@ -122,6 +48,56 @@ def _parse_duration(duration_str: str) -> Optional[int]:
     elif len(parts) == 2:
         return int(parts[0]) * 60 + int(parts[1])
     return None
+
+
+def _pick_text(*values: Any) -> str:
+    for value in values:
+        if isinstance(value, str):
+            text = value.strip()
+            if text:
+                return text
+    return ''
+
+
+def _to_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        cleaned = re.sub(r'[^\d]', '', value)
+        if cleaned:
+            try:
+                return int(cleaned)
+            except ValueError:
+                return None
+    return None
+
+
+def _extract_youtube_title(data: Dict[str, Any]) -> str:
+    title = data.get('title')
+    if isinstance(title, str):
+        return title.strip()
+    if isinstance(title, dict):
+        title_text = _pick_text(title.get('simpleText'), title.get('text'))
+        if title_text:
+            return title_text
+        runs = title.get('runs') or []
+        if isinstance(runs, list):
+            joined = ''.join(
+                run.get('text', '')
+                for run in runs
+                if isinstance(run, dict)
+            ).strip()
+            if joined:
+                return joined
+
+    video_details = data.get('videoDetails')
+    if isinstance(video_details, dict):
+        return _pick_text(video_details.get('title'))
+    return ''
 
 
 def detect_platform(url: str) -> str:
@@ -177,7 +153,7 @@ def scrape_content(url: str, max_items: int = 10, user=None) -> Dict:
         return {
             'caption': f'Тестовый контент с {platform} | URL: {url[:50]}...',
             'description': f'Тестовый контент с {platform} | URL: {url[:50]}...',
-            'transcript': 'Тестовая расшифровка',
+            'transcript': '',
             'media_url': url,
             'author': f'test_user_{platform}',
             'platform': platform,
@@ -608,11 +584,16 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     # Маппинг полей ответа
     media_data = data.get('data', {}).get('xdt_shortcode_media', {})
 
-    if platform == 'youtube' and 'title' in data:
-        caption_text = data.get('description', '')
-
-        # 🚀 Если описания нет — пробуем транскрибировать аудио
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'youtube')
+    if platform == 'youtube':
+        youtube_title = _extract_youtube_title(data)
+        caption_text = _pick_text(
+            data.get('description'),
+            data.get('caption'),
+            data.get('text'),
+            youtube_title,
+        )
+        if not caption_text:
+            logger.warning("YouTube scrape returned no text fields for url=%s, keys=%s", url, sorted(data.keys()))
         
         author = data.get('channel', {}).get('handle', data.get('channel', {}).get('title', 'unknown'))
         views_count = data.get('viewCountInt')
@@ -632,12 +613,12 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         has_audio = True
         saves_count = None
         author_followers = None
-    elif platform == 'linkedin' and 'likeCount' in data:
-        caption_text = data.get('description', '') or data.get('text', '')
+    elif platform == 'linkedin':
+        caption_text = _pick_text(data.get('description'), data.get('text'), data.get('title'))
         author = data.get('author', {}).get('name', 'unknown')
-        likes_count = data.get('likeCount')
-        comments_count = data.get('commentCount')
-        shares_count = None
+        likes_count = _to_int(data.get('likeCount')) or _to_int(data.get('reactionCount'))
+        comments_count = _to_int(data.get('commentCount'))
+        shares_count = _to_int(data.get('shareCount')) or _to_int(data.get('repostCount'))
         video_duration = None
         published_at = None
         pub_date = data.get('datePublished')
@@ -647,53 +628,43 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
                 published_at = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
             except ValueError:
                 pass
-        author_followers = data.get('author', {}).get('followers')
-        # Если это видеопост и описание пустое — пробуем транскрибировать
-        # Признаков видео в ответе может не быть, поэтому вызываем только если caption пустой
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'linkedin')
+        author_followers = _to_int(data.get('author', {}).get('followers'))
         has_audio = None
         is_video = None
-        views_count = None
-    elif platform == 'tiktok' and 'aweme_detail' in data:
-        detail = data.get('aweme_detail', {})
-        caption_text = detail.get('desc', '')
+        views_count = _to_int(data.get('viewCount')) or _to_int(data.get('views'))
+    elif platform == 'tiktok':
+        detail = data.get('aweme_detail') or data
+        caption_text = _pick_text(detail.get('desc'), detail.get('description'), detail.get('text'))
         author = detail.get('author', {}).get('unique_id', 'unknown')
-        stats = detail.get('statistics', {})
-        likes_count = stats.get('digg_count')
-        comments_count = stats.get('comment_count')
-        shares_count = stats.get('share_count')
-        views_count = stats.get('play_count')
+        stats = detail.get('statistics', {}) or detail.get('stats', {})
+        likes_count = _to_int(stats.get('digg_count')) or _to_int(stats.get('like_count'))
+        comments_count = _to_int(stats.get('comment_count'))
+        shares_count = _to_int(stats.get('share_count'))
+        views_count = _to_int(stats.get('play_count')) or _to_int(detail.get('playCount'))
         video = detail.get('video', {})
-        video_duration = video.get('duration')
+        video_duration = _to_int(video.get('duration'))
         if video_duration:
-            video_duration = video_duration // 1000
-        author_followers = detail.get('author', {}).get('follower_count')
+            video_duration = video_duration // 1000 if video_duration > 1000 else video_duration
+        author_followers = _to_int(detail.get('author', {}).get('follower_count'))
         has_audio = True
         is_video = True
         published_at = None
-        saves_count = stats.get('collect_count')
-        # Если описание пустое — транскрибируем
-        caption_text = _maybe_transcribe_when_empty(caption_text, url, 'tiktok')
+        saves_count = _to_int(stats.get('collect_count')) or _to_int(stats.get('save_count'))
     else:
         caption_edges = media_data.get('edge_media_to_caption', {}).get('edges', [])
         caption_text = caption_edges[0].get('node', {}).get('text', '') if caption_edges else ''
-
-        # 🚀 Instagram: If no caption, transcribe audio
-        if not caption_text and platform == 'instagram':
-            logger.info(f"Instagram caption is empty for {url}, trying Whisper transcription...")
-            caption_text = transcribe_media_audio(url, 'instagram') or ""
             
         owner = media_data.get('owner', {})
         author = owner.get('username', 'unknown')
-        views_count = media_data.get('video_view_count')
-        likes_count = media_data.get('edge_media_preview_like', {}).get('count', 0)
+        views_count = _to_int(media_data.get('video_view_count'))
+        likes_count = _to_int(media_data.get('edge_media_preview_like', {}).get('count'))
         comments_edge = media_data.get('edge_media_to_parent_comment', {})
-        comments_count = comments_edge.get('count', 0) or len(comments_edge.get('edges', []))
+        comments_count = _to_int(comments_edge.get('count')) or len(comments_edge.get('edges', []))
         alt_c = media_data.get('comment_count') or media_data.get('comments_count')
         if alt_c and not comments_count:
-            comments_count = alt_c
-        shares_count = media_data.get('share_count')
-        video_duration = media_data.get('video_duration')
+            comments_count = _to_int(alt_c)
+        shares_count = _to_int(media_data.get('share_count'))
+        video_duration = _to_int(media_data.get('video_duration'))
         taken_at = media_data.get('taken_at_timestamp')
         try:
             from datetime import datetime
@@ -701,36 +672,53 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         except:
             published_at = None
         saves_edge = media_data.get('edge_media_saved', {})
-        saves_count = saves_edge.get('count') if saves_edge else None
-        author_followers = owner.get('edge_followed_by', {}).get('count')
+        saves_count = _to_int(saves_edge.get('count')) if saves_edge else None
+        author_followers = _to_int(owner.get('edge_followed_by', {}).get('count'))
         has_audio = media_data.get('has_audio')
         is_video = media_data.get('is_video')
     
+    views_count = _to_int(views_count)
+    likes_count = _to_int(likes_count)
+    comments_count = _to_int(comments_count)
+    shares_count = _to_int(shares_count)
+    saves_count = _to_int(saves_count)
+    author_followers = _to_int(author_followers)
+    video_duration = _to_int(video_duration)
+
     engagement_rate = None
     if views_count and views_count > 0:
         total = (likes_count or 0) + (comments_count or 0) + (shares_count or 0)
         engagement_rate = round((total / views_count) * 100, 2)
     
-    if platform == 'youtube' and 'title' in data:
+    if platform == 'youtube':
         media_url = data.get('url') or url
         play_count = data.get('playCountInt')
-    elif platform == 'linkedin' and 'likeCount' in data:
+    elif platform == 'linkedin':
         media_url = data.get('url') or url
         play_count = None
-    elif platform == 'tiktok' and 'aweme_detail' in data:
-        detail = data.get('aweme_detail', {})
+    elif platform == 'tiktok':
+        detail = data.get('aweme_detail') or data
         video = detail.get('video', {})
         play_addrs = video.get('download_no_watermark_addr', {}).get('url_list', [])
         media_url = play_addrs[0] if play_addrs else url
-        play_count = detail.get('statistics', {}).get('play_count')
+        play_count = _to_int(detail.get('statistics', {}).get('play_count')) or _to_int(detail.get('playCount'))
     else:
         media_url = media_data.get('video_url') or media_data.get('display_url') or url
         play_count = media_data.get('video_play_count')
     
+    resolved_text = _pick_text(
+        caption_text,
+        data.get('caption'),
+        data.get('description'),
+        data.get('text'),
+        data.get('title'),
+        _extract_youtube_title(data) if platform == 'youtube' else '',
+    )
+
     return {
-        'caption': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
-        'description': caption_text or data.get('caption') or data.get('description') or data.get('text', ''),
-        'transcript': data.get('transcript', ''),
+        'caption': resolved_text,
+        'description': resolved_text,
+        'transcript': _pick_text(data.get('transcript')),
         'media_url': media_url,
         'author': author,
         'platform': platform,
@@ -741,7 +729,7 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         'engagement_rate': engagement_rate,
         'video_duration': video_duration,
         'published_at': published_at,
-        'play_count': play_count,
+        'play_count': _to_int(play_count),
         'saves_count': saves_count,
         'author_followers': author_followers,
         'has_audio': has_audio,

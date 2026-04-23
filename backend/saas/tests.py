@@ -1,7 +1,7 @@
 """
 РўРµСЃС‚С‹ РґР»СЏ РїСЂРѕРІРµСЂРєРё API Рё РїР°Р№РїР»Р°Р№РЅР° РѕР±СЂР°Р±РѕС‚РєРё РїРѕСЃС‚РѕРІ.
 """
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from saas.models import Post, Prompt, SubscriptionPlan, Workspace, WorkspaceMember
+from saas.scraper import _scrape_single_post
 from saas.tasks import process_post, scrape_and_process_post
 
 
@@ -117,3 +118,34 @@ class PostProcessingTextFallbackTestCase(TestCase):
         self.assertEqual(post.original_text, 'service description text')
         self.assertEqual(post.description, 'service description text')
         mocked_delay.assert_called_once_with(post.id)
+
+
+class YouTubeScraperFallbackTestCase(TestCase):
+    @patch('saas.scraper.get_session')
+    def test_youtube_uses_title_when_description_empty(self, mocked_get_session):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            'title': 'Fallback title from YouTube',
+            'description': '',
+            'channel': {'handle': '@channel'},
+            'viewCountInt': 1000,
+            'likeCountInt': 100,
+            'commentCountInt': 10,
+            'shareCountInt': 2,
+            'durationText': '0:45',
+            'url': 'https://www.youtube.com/shorts/test',
+        }
+
+        mock_session = mocked_get_session.return_value
+        mock_session.get.return_value = mock_response
+
+        result = _scrape_single_post(
+            url='https://www.youtube.com/shorts/test',
+            platform='youtube',
+            api_base='https://api.scrapecreators.com/v1',
+            user=None,
+        )
+
+        self.assertEqual(result['caption'], 'Fallback title from YouTube')
+        self.assertEqual(result['description'], 'Fallback title from YouTube')
