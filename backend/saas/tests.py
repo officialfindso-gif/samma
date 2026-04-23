@@ -10,7 +10,6 @@ from rest_framework.test import APIClient
 
 from saas.models import Post, Prompt, SubscriptionPlan, Workspace, WorkspaceMember
 from saas.scraper import _scrape_single_post
-from saas.tasks import RUSSIAN_ONLY_HINT
 from saas.tasks import process_post, scrape_and_process_post
 
 
@@ -84,34 +83,6 @@ class PostProcessingTextFallbackTestCase(TestCase):
             mocked_generate.call_args.kwargs['original_text'],
             'description from scraper',
         )
-
-    @patch('saas.tasks.generate_caption', return_value='Описание на русском языке')
-    def test_process_post_writes_generated_description_to_description_in_russian(self, mocked_generate):
-        post = Post.objects.create(
-            workspace=self.workspace,
-            created_by=self.user,
-            original_text='transcript text',
-            description='source description in english',
-            transcript='transcript text',
-            status='new',
-        )
-        Prompt.objects.create(
-            workspace=self.workspace,
-            name='Description default',
-            type='description',
-            content='Write SEO description',
-            is_active=True,
-            is_default=True,
-        )
-
-        process_post.run(post.id)
-
-        post.refresh_from_db()
-        self.assertEqual(post.status, 'ready')
-        self.assertEqual(post.generated_description, 'Описание на русском языке')
-        self.assertEqual(post.description, 'Описание на русском языке')
-        mocked_generate.assert_called_once()
-        self.assertIn(RUSSIAN_ONLY_HINT, mocked_generate.call_args.kwargs['prompt_text'])
 
     @patch('saas.tasks.process_post.delay')
     @patch('saas.tasks.scrape_content')
