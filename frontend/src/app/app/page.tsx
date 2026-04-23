@@ -332,6 +332,16 @@ export default function AppPage() {
     return true;
   });
 
+  const togglePostSelection = (postId: number) => {
+    const newSelected = new Set(selectedPosts);
+    if (newSelected.has(postId)) newSelected.delete(postId); else newSelected.add(postId);
+    setSelectedPosts(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPosts.size === filteredPosts.length) setSelectedPosts(new Set()); else setSelectedPosts(new Set(filteredPosts.map((p) => p.id)));
+  };
+
   const handleProcessAll = async () => {
     if (!accessToken) return;
     const newPosts = posts.filter((p) => p.status === "new");
@@ -432,7 +442,7 @@ export default function AppPage() {
               )}
             </div>
           ) : (
-            <PostsList filteredPosts={filteredPosts} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
+            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
           )}
 
           {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} onEdit={() => { setEditingPost(selectedPost); setEditOpen(true); setSelectedPost(null); }} formatNumber={formatNumber} accessToken={accessToken} />}
