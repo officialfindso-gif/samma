@@ -74,11 +74,14 @@ def generate_caption(prompt_text: str, original_text: str) -> str:
         },
     ]
 
+    model_name = (settings.OPENAI_MODEL or "").strip()
+    token_key = "max_completion_tokens" if model_name.startswith("gpt-5") else "max_tokens"
+
     payload = {
         "model": settings.OPENAI_MODEL,
         "messages": messages,
         "temperature": 0.7,
-        "max_tokens": 500,
+        token_key: 500,
     }
 
     data = _post_json("/chat/completions", payload)
