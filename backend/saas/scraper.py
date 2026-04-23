@@ -176,6 +176,7 @@ def scrape_content(url: str, max_items: int = 10, user=None) -> Dict:
         logger.warning("API ключ не настроен или включён режим мока")
         return {
             'caption': f'Тестовый контент с {platform} | URL: {url[:50]}...',
+            'description': f'Тестовый контент с {platform} | URL: {url[:50]}...',
             'transcript': 'Тестовая расшифровка',
             'media_url': url,
             'author': f'test_user_{platform}',

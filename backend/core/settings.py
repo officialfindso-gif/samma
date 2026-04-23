@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-$1<REDACTED>
+SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
     raise ValueError(
         "SECRET_KEY is not set in environment variables. "
@@ -144,7 +144,7 @@ except Exception:
     # Never fail imports because of logging in settings
     pass
 
-$1<REDACTED>
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1')
 OPENAI_PROXY = os.getenv('OPENAI_PROXY')  # может быть None

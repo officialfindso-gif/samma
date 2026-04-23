@@ -10,6 +10,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _normalize_text(value):
+    if value is None:
+        return ''
+    return str(value).strip()
+
+
+def _choose_original_text(*candidates):
+    for value in candidates:
+        normalized = _normalize_text(value)
+        if normalized:
+            return normalized
+    return ''
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -81,33 +95,38 @@ def scrape_and_process_post(self, post_id: int):
                 if platform == 'instagram':
                     item_data = item.get('data', {})
                     title = f"{profile.get('handle', '')} - Reel #{i+1}"
-                    original_text = item_data.get('caption', '') or item_data.get('description', '')
-                    description = item_data.get('description', '') or item_data.get('caption', '')
+                    caption = item_data.get('caption', '')
+                    description = item_data.get('description', '')
                     transcript = item_data.get('transcript', '')
+                    original_text = _choose_original_text(caption, description, transcript)
+                    description = _choose_original_text(description, caption, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
                     comments = item.get('comments')
                 elif platform == 'tiktok':
                     title = f"{profile.get('handle', '')} - Video #{i+1}"
-                    original_text = item.get('desc', '')
                     description = item.get('desc', '')
                     transcript = ''
+                    original_text = _choose_original_text(description, transcript)
+                    description = _choose_original_text(description, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
                     comments = item.get('comments')
                 elif platform == 'youtube':
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Video #{i+1}"
-                    original_text = item.get('description', '')
                     description = item.get('description', '')
                     transcript = ''
+                    original_text = _choose_original_text(description, transcript)
+                    description = _choose_original_text(description, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
                     comments = item.get('comments')
                 else:  # linkedin
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Post #{i+1}"
-                    original_text = item.get('description', '')
                     description = item.get('description', '')
                     transcript = ''
+                    original_text = _choose_original_text(description, transcript)
+                    description = _choose_original_text(description, transcript)
                     views = None
                     likes = item.get('likes')
                     comments = item.get('comments')
@@ -137,10 +156,16 @@ def scrape_and_process_post(self, post_id: int):
             return
 
         # Одиночный пост - сохраняем метрики
+        caption = scraped_data.get('caption', '')
+        description = scraped_data.get('description', '')
+        transcript = scraped_data.get('transcript', '')
+        original_text = _choose_original_text(caption, description, transcript)
+        normalized_description = _choose_original_text(description, caption, transcript)
+
         with transaction.atomic():
-            post.original_text = scraped_data.get('caption', '')
-            post.description = scraped_data.get('description', '')
-            post.transcript = scraped_data.get('transcript', '')
+            post.original_text = original_text
+            post.description = normalized_description
+            post.transcript = _normalize_text(transcript)
             post.platform = scraped_data.get('platform', post.platform)
             post.views_count = scraped_data.get('views_count')
             post.likes_count = scraped_data.get('likes_count')
@@ -191,7 +216,7 @@ def process_post(self, post_id: int):
     except Post.DoesNotExist:
         return
 
-    base_text = post.original_text or post.transcript or ''
+    base_text = _choose_original_text(post.original_text, post.description, post.transcript)
     if not base_text:
         with transaction.atomic():
             post.status = 'error'
@@ -349,8 +374,17 @@ def scrape_competitor_posts():
                 source_url=competitor.url,
                 platform=competitor.platform,
                 status='new',
-                original_text=scraped_data.get('caption', ''),
-                transcript=scraped_data.get('transcript', ''),
+                original_text=_choose_original_text(
+                    scraped_data.get('caption', ''),
+                    scraped_data.get('description', ''),
+                    scraped_data.get('transcript', ''),
+                ),
+                description=_choose_original_text(
+                    scraped_data.get('description', ''),
+                    scraped_data.get('caption', ''),
+                    scraped_data.get('transcript', ''),
+                ),
+                transcript=_normalize_text(scraped_data.get('transcript', '')),
                 views_count=scraped_data.get('views_count'),
                 likes_count=scraped_data.get('likes_count'),
                 comments_count=scraped_data.get('comments_count'),
@@ -415,8 +449,17 @@ def scrape_single_competitor(competitor_id: int):
             source_url=competitor.url,
             platform=competitor.platform,
             status='new',
-            original_text=scraped_data.get('caption', ''),
-            transcript=scraped_data.get('transcript', ''),
+            original_text=_choose_original_text(
+                scraped_data.get('caption', ''),
+                scraped_data.get('description', ''),
+                scraped_data.get('transcript', ''),
+            ),
+            description=_choose_original_text(
+                scraped_data.get('description', ''),
+                scraped_data.get('caption', ''),
+                scraped_data.get('transcript', ''),
+            ),
+            transcript=_normalize_text(scraped_data.get('transcript', '')),
             views_count=scraped_data.get('views_count'),
             likes_count=scraped_data.get('likes_count'),
             comments_count=scraped_data.get('comments_count'),

@@ -60,7 +60,7 @@ git clone https://github.com/officialfindso-gif/samma.git .
 
 ```bash
 cat > .env << EOF
-$1<REDACTED>
+SECRET_KEY=$(openssl rand -hex 32)
 DEBUG=False
 ALLOWED_HOSTS=78.17.34.15,localhost,127.0.0.1
 
@@ -68,9 +68,10 @@ POSTGRES_USER=content_user
 POSTGRES_PASSWORD=$(openssl rand -base64 32)
 POSTGRES_DB=content_saas
 
-$1<REDACTED>
+OPENAI_API_KEY=<openai-api-key>
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_API_BASE=https://api.openai.com/v1
+SCRAPECREATORS_API_KEY=<scrapecreators-api-key>
 
 REDIS_URL=redis://redis:6379/0
 CORS_ALLOWED_ORIGINS=http://78.17.34.15,http://localhost:3000
