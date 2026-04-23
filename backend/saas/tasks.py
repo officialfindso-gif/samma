@@ -24,6 +24,9 @@ def _choose_original_text(*candidates):
     return ''
 
 
+RUSSIAN_ONLY_HINT = "Пиши только на русском языке."
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -272,8 +275,12 @@ def process_post(self, post_id: int):
                 continue
 
             try:
+                prompt_text = prompt.content
+                if prompt_type == 'description' and RUSSIAN_ONLY_HINT not in prompt_text:
+                    prompt_text = f"{prompt_text}\n\n{RUSSIAN_ONLY_HINT}"
+
                 generated = generate_caption(
-                    prompt_text=prompt.content,
+                    prompt_text=prompt_text,
                     original_text=base_text
                 )
                 setattr(post, field_name, generated)
@@ -289,7 +296,11 @@ def process_post(self, post_id: int):
                     exc_info=True
                 )
 
+        normalized_generated_description = _normalize_text(post.generated_description)
         with transaction.atomic():
+            if normalized_generated_description:
+                post.description = normalized_generated_description
+                update_fields.append('description')
             post.status = 'ready'
             post.error_message = ''
             post.save(update_fields=update_fields)
