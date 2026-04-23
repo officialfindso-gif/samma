@@ -256,3 +256,23 @@ docker compose -f docker-compose.prod.yml exec nginx nginx -t
 # Перезапуск Nginx
 docker compose -f docker-compose.prod.yml restart nginx
 ```
+
+## Required Environment Variables (Compose)
+
+Do not run production with compose defaults like `change_me`.
+Set these variables in the project `.env` file before:
+`docker compose -f docker-compose.prod.yml up -d --build`
+
+```env
+POSTGRES_PASSWORD=<strong-random-password>
+DATABASE_URL=postgres://content_user:<url-encoded-password>@db:5432/content_saas
+SECRET_KEY=<django-secret-key>
+OPENAI_API_KEY=<openai-key>
+SCRAPECREATORS_API_KEY=<scrapecreators-key>
+```
+
+Quick check:
+
+```bash
+grep -E "POSTGRES_PASSWORD|DATABASE_URL|SECRET_KEY|OPENAI_API_KEY|SCRAPECREATORS_API_KEY" .env
+```

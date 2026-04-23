@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: content_saas
       POSTGRES_USER: content_user
-      POSTGRES_PASSWORD: IDincd/FVZaz/22XrXsEtqFIeGXuemGTzeE/d4qpvBc=
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -34,7 +34,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgres://content_user:IDincd%2FFVZaz%2F22XrXsEtqFIeGXuemGTzeE%2Fd4qpvBc%3D@db:5432/content_saas
+      - DATABASE_URL=${DATABASE_URL:-postgres://content_user:change_me@db:5432/content_saas}
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=False
     depends_on:
@@ -57,7 +57,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgres://content_user:IDincd%2FFVZaz%2F22XrXsEtqFIeGXuemGTzeE%2Fd4qpvBc%3D@db:5432/content_saas
+      - DATABASE_URL=${DATABASE_URL:-postgres://content_user:change_me@db:5432/content_saas}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
