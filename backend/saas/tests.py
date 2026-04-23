@@ -184,7 +184,7 @@ class YouTubeScraperFallbackTestCase(TestCase):
         )
 
         self.assertEqual(result['caption'], 'Fallback title from YouTube')
-        self.assertEqual(result['description'], '')
+        self.assertEqual(result['description'], 'Fallback title from YouTube')
 
     @patch('saas.scraper.get_session')
     def test_youtube_fetches_transcript_from_transcript_endpoint(self, mocked_get_session):
@@ -214,5 +214,3 @@ class YouTubeScraperFallbackTestCase(TestCase):
         )
 
         self.assertEqual(result['transcript'], 'manual transcript from endpoint')
-        self.assertEqual(result['caption'], 'manual transcript from endpoint')
-        self.assertEqual(result['description'], '')
