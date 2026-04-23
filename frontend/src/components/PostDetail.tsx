@@ -43,30 +43,6 @@ export default function PostDetail({ post, onProcess }: PostDetailProps) {
         </div>
       )}
 
-      {/* Расшифровка */}
-      {post.transcript && (
-        <details className="group">
-          <summary className="text-sm font-medium text-slate-300 mb-2 cursor-pointer flex items-center gap-2">
-            <span>Расшифровка видео</span>
-            <span className="text-xs text-slate-500 group-open:rotate-90 transition-transform">▶</span>
-          </summary>
-          <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-slate-500">Можно копировать текст</span>
-              <button
-                onClick={() => handleCopy(post.transcript || '')}
-                className="px-3 py-1 text-xs font-medium rounded bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
-              >
-                {copied ? "✓ Скопировано" : "Копировать"}
-              </button>
-            </div>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap font-mono">
-              {post.transcript}
-            </p>
-          </div>
-        </details>
-      )}
-
       {/* Сгенерированное описание */}
       {post.generated_caption && (
         <div>

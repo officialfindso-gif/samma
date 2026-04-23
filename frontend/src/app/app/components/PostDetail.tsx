@@ -99,13 +99,6 @@ export default function PostDetail({
           </div>
         )}
 
-        {selectedPost.transcript && (
-          <div className="space-y-2 sm:space-y-3">
-            <h4 className="text-xs sm:text-sm font-semibold text-gray-300 uppercase tracking-wide">Расшифровка</h4>
-            <div className="p-2 sm:p-3 bg-gray-800/50 rounded-lg border border-gray-700/50"><p className="text-xs sm:text-sm text-gray-300 whitespace-pre-wrap break-words">{selectedPost.transcript}</p></div>
-          </div>
-        )}
-
         <PostResultsTabs post={selectedPost} />
 
         {/* Notes Toggle */}
