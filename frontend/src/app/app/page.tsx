@@ -24,6 +24,10 @@ import CreatePostModal from "./components/CreatePostModal";
 import Onboarding from "./components/Onboarding";
 import { formatNumber } from "@/lib/utils";
 
+const DEFAULT_COLUMN_ORDER = [
+  "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions",
+];
+
 export default function AppPage() {
   const router = useRouter();
 
@@ -73,9 +77,7 @@ export default function AppPage() {
     platform: true,
   });
 
-  const [columnOrder, setColumnOrder] = useState<string[]>([
-    "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
-  ]);
+  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
 
   const columnLabels: Record<string, string> = {
     source: "Источник",
@@ -110,7 +112,15 @@ export default function AppPage() {
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder);
-        setColumnOrder(parsedOrder);
+        if (Array.isArray(parsedOrder)) {
+          const cleaned = parsedOrder.filter((key) => DEFAULT_COLUMN_ORDER.includes(key));
+          const normalized = [
+            ...cleaned,
+            ...DEFAULT_COLUMN_ORDER.filter((key) => !cleaned.includes(key)),
+          ];
+          setColumnOrder(normalized);
+          localStorage.setItem("columnOrder", JSON.stringify(normalized));
+        }
       } catch {
         // ignore
       }

@@ -86,6 +86,8 @@ export default function ColumnSettings({
   moveColumn: (from: number, to: number) => void;
   columnLabels: Record<string, string>;
 }) {
+  const settingsOrder = columnOrder.filter((key) => key !== "checkbox");
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -96,8 +98,8 @@ export default function ColumnSettings({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = columnOrder.indexOf(active.id as string);
-      const newIndex = columnOrder.indexOf(over.id as string);
+      const oldIndex = settingsOrder.indexOf(active.id as string);
+      const newIndex = settingsOrder.indexOf(over.id as string);
       moveColumn(oldIndex, newIndex);
     }
   };
@@ -124,9 +126,9 @@ export default function ColumnSettings({
             </div>
             
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={columnOrder} strategy={verticalListSortingStrategy}>
+              <SortableContext items={settingsOrder} strategy={verticalListSortingStrategy}>
                 <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
-                  {columnOrder.map((key) => (
+                  {settingsOrder.map((key) => (
                     <SortableItem
                       key={key}
                       id={key}
