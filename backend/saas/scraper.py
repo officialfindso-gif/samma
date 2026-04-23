@@ -139,6 +139,24 @@ def _extract_transcript(data: Dict[str, Any]) -> str:
     return ''
 
 
+def _fetch_youtube_transcript(session: requests.Session, url: str) -> str:
+    try:
+        resp = session.get(
+            "https://api.scrapecreators.com/v1/youtube/video/transcript",
+            params={'url': url},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        return _pick_text(
+            payload.get('transcript_only_text'),
+            _extract_transcript(payload),
+        )
+    except Exception as exc:
+        logger.warning("YouTube transcript endpoint failed for %s: %s", url, exc)
+        return ''
+
+
 def detect_platform(url: str) -> str:
     parsed = urlparse(url.lower())
     domain = parsed.netloc
@@ -746,6 +764,8 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         play_count = media_data.get('video_play_count')
     
     transcript_text = _extract_transcript(data)
+    if platform == 'youtube' and not transcript_text:
+        transcript_text = _fetch_youtube_transcript(session, url)
 
     resolved_text = _pick_text(
         caption_text,
