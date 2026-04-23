@@ -27,8 +27,6 @@ export default function FiltersBar({
   selectedCount,
   handleBulkProcess,
   handleBulkDelete,
-  toggleSelectAll,
-  filteredLength,
 }: {
   postsExist: boolean;
   searchQuery: string;
@@ -53,8 +51,6 @@ export default function FiltersBar({
   selectedCount: number;
   handleBulkProcess: () => Promise<void> | void;
   handleBulkDelete: () => Promise<void> | void;
-  toggleSelectAll: () => void;
-  filteredLength: number;
 }) {
   if (!postsExist) return null;
 
@@ -107,10 +103,6 @@ export default function FiltersBar({
         />
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center justify-center w-9 sm:w-10 flex-shrink-0 h-9 sm:h-10">
-            <input type="checkbox" checked={selectedCount === filteredLength && filteredLength > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
-          </div>
-
           <ColumnSettings visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} selectedCount={selectedCount} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} />
         </div>
       </div>
@@ -160,10 +152,6 @@ export default function FiltersBar({
         />
 
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          <div className="flex items-center justify-center w-9 flex-shrink-0 h-9">
-            <input type="checkbox" checked={selectedCount === filteredLength && filteredLength > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
-          </div>
-
           <ColumnSettings visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} selectedCount={selectedCount} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} />
         </div>
       </div>

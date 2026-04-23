@@ -74,11 +74,10 @@ export default function AppPage() {
   });
 
   const [columnOrder, setColumnOrder] = useState<string[]>([
-    "checkbox", "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
+    "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions"
   ]);
 
   const columnLabels: Record<string, string> = {
-    checkbox: "Выбор",
     source: "Источник",
     original: "Оригинал",
     result: "Результат",
@@ -318,12 +317,6 @@ export default function AppPage() {
     }
   };
 
-  const togglePostSelection = (postId: number) => {
-    const newSelected = new Set(selectedPosts);
-    if (newSelected.has(postId)) newSelected.delete(postId); else newSelected.add(postId);
-    setSelectedPosts(newSelected);
-  };
-
   const filteredPosts = posts.filter((post) => {
     if (filterStatus !== "all" && post.status !== filterStatus) return false;
     if (filterPlatform !== "all" && post.platform !== filterPlatform) return false;
@@ -338,10 +331,6 @@ export default function AppPage() {
     }
     return true;
   });
-
-  const toggleSelectAll = () => {
-    if (selectedPosts.size === filteredPosts.length) setSelectedPosts(new Set()); else setSelectedPosts(new Set(filteredPosts.map((p) => p.id)));
-  };
 
   const handleProcessAll = async () => {
     if (!accessToken) return;
@@ -424,7 +413,7 @@ export default function AppPage() {
 
           {error && <div className="mb-4 lg:mb-6 text-xs sm:text-sm text-gray-400 p-3 sm:p-4 bg-gray-800/30 rounded border border-gray-800/50">{error}</div>}
 
-          <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} toggleSelectAll={toggleSelectAll} filteredLength={filteredPosts.length} />
+          <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} />
 
           {loadingPosts ? (
             <div className="text-xs sm:text-sm text-gray-400">Загружка постов...</div>
@@ -443,7 +432,7 @@ export default function AppPage() {
               )}
             </div>
           ) : (
-            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
+            <PostsList filteredPosts={filteredPosts} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} />
           )}
 
           {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} onEdit={() => { setEditingPost(selectedPost); setEditOpen(true); setSelectedPost(null); }} formatNumber={formatNumber} accessToken={accessToken} />}

@@ -7,7 +7,6 @@ import { PostResultsTabs } from "./PostResultsTabs";
 type ColumnWidths = Record<string, number>;
 
 const DEFAULT_WIDTHS: ColumnWidths = {
-  checkbox: 44,
   source: 128,
   original: 160,
   result: 160,
@@ -25,7 +24,6 @@ const DEFAULT_WIDTHS: ColumnWidths = {
 };
 
 const MIN_WIDTHS: ColumnWidths = {
-  checkbox: 40,
   source: 80,
   original: 100,
   result: 100,
@@ -44,27 +42,21 @@ const MIN_WIDTHS: ColumnWidths = {
 
 export default function PostsList({
   filteredPosts,
-  selectedPosts,
-  togglePostSelection,
   selectedPost,
   setSelectedPost,
   visibleColumns,
   columnOrder,
   columnLabels,
-  toggleSelectAll,
   handleProcess,
   handleDelete,
   formatNumber,
 }: {
   filteredPosts: Post[];
-  selectedPosts: Set<number>;
-  togglePostSelection: (id: number) => void;
   selectedPost: Post | null;
   setSelectedPost: (p: Post | null) => void;
   visibleColumns: Record<string, boolean>;
   columnOrder: string[];
   columnLabels: Record<string, string>;
-  toggleSelectAll: () => void;
   handleProcess: (id: number) => Promise<void> | void;
   handleDelete: (id: number) => Promise<void> | void;
   formatNumber: (n: number) => string;
@@ -160,7 +152,7 @@ export default function PostsList({
       case "result":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.generated_caption ? <div className="text-xs text-gray-600 line-clamp-3">{post.generated_caption}</div> : post.status === 'ready' ? <div className="text-xs text-gray-500 italic flex items-center gap-1">⚪ Пусто</div> : null}
+            {post.generated_caption ? <div className="text-xs text-gray-400 line-clamp-3">{post.generated_caption}</div> : post.status === 'ready' ? <div className="text-xs text-gray-500 italic flex items-center gap-1">⚪ Пусто</div> : null}
           </div>
         );
       case "description":
@@ -248,7 +240,6 @@ export default function PostsList({
       {/* Мобильное отображение карточками */}
       <div className="block md:hidden space-y-3">
         {filteredPosts.map((post) => {
-          const isSelected = selectedPosts.has(post.id);
           const isActive = selectedPost?.id === post.id;
           const dateStr = new Date(post.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -260,16 +251,9 @@ export default function PostsList({
               }`} 
               onClick={() => setSelectedPost(post)}
             >
-              {/* Header: Title, Status, Checkbox */}
+              {/* Header: Title, Status */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <input 
-                    type="checkbox" 
-                    checked={isSelected} 
-                    onChange={() => togglePostSelection(post.id)} 
-                    className="w-5 h-5 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer accent-white flex-shrink-0" 
-                    onClick={(e) => e.stopPropagation()} 
-                  />
                   <div className="flex flex-col min-w-0">
                     <h3 className="font-semibold text-sm text-white truncate leading-tight">{post.title || `Пост #${post.id}`}</h3>
                     <span className="text-xs text-gray-500 truncate">{new URL(post.source_url || 'https://localhost').hostname}</span>
@@ -347,24 +331,16 @@ export default function PostsList({
         <div className="overflow-x-auto posts-table-container" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
           {/* Table Header */}
           <div className="flex items-center px-2 lg:px-4 py-2 lg:py-3 bg-gradient-to-r from-gray-800/70 to-gray-700/50 border-b border-gray-600/30 text-xs lg:text-sm font-semibold text-gray-300 uppercase tracking-wider backdrop-blur-sm w-max">
-            <div className="flex items-center justify-center flex-shrink-0 border-r border-gray-600/20" style={{ width: getColumnWidth("checkbox") }}>
-              <input type="checkbox" checked={selectedPosts.size === filteredPosts.length && filteredPosts.length > 0} onChange={toggleSelectAll} className="w-3.5 h-3.5 lg:w-4 lg:h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
-              <div className="w-1 h-6 hover:bg-blue-500/50 hover:w-1.5 transition-all cursor-col-resize ml-auto" onMouseDown={(e) => handleResizeStart(e, "checkbox")} style={{ backgroundColor: resizingColumn === "checkbox" ? "#3b82f6" : "transparent" }} />
-            </div>
             {columnOrder.map(renderHeaderCell)}
           </div>
 
           {/* Table Body */}
           <div className="divide-y divide-gray-800/50">
             {filteredPosts.map((post) => {
-              const isSelected = selectedPosts.has(post.id);
               const isActive = selectedPost?.id === post.id;
 
               return (
                 <div key={post.id} className={`flex items-center py-2 lg:py-3 hover:bg-gradient-to-r hover:from-gray-800/40 hover:to-gray-700/30 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-gray-900/20 w-max ${isActive ? 'bg-gray-700' : ''}`} onClick={() => setSelectedPost(post)}>
-                  <div className="flex items-center justify-center flex-shrink-0 border-r border-gray-600/20" style={{ width: getColumnWidth("checkbox") }} onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={isSelected} onChange={() => togglePostSelection(post.id)} className="w-3.5 h-3.5 lg:w-4 lg:h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
-                  </div>
                   {columnOrder.map((key) => renderBodyCell(post, key))}
                 </div>
               );
