@@ -100,6 +100,45 @@ def _extract_youtube_title(data: Dict[str, Any]) -> str:
     return ''
 
 
+def _extract_transcript(data: Dict[str, Any]) -> str:
+    direct = _pick_text(data.get('transcript'))
+    if direct:
+        return direct
+
+    def collect_from_segments(segments: Any) -> str:
+        if not isinstance(segments, list):
+            return ''
+        parts: List[str] = []
+        for item in segments:
+            if isinstance(item, dict):
+                text = _pick_text(item.get('text'), item.get('utf8'), item.get('caption'))
+                if text:
+                    parts.append(text)
+            elif isinstance(item, str):
+                if item.strip():
+                    parts.append(item.strip())
+        return ' '.join(parts).strip()
+
+    for key in ('segments', 'captions', 'subtitles', 'transcript_segments'):
+        value = data.get(key)
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned:
+                return cleaned
+        if isinstance(value, dict):
+            nested = collect_from_segments(
+                value.get('segments') or value.get('events') or value.get('items') or value.get('runs')
+            )
+            if nested:
+                return nested
+        if isinstance(value, list):
+            nested = collect_from_segments(value)
+            if nested:
+                return nested
+
+    return ''
+
+
 def detect_platform(url: str) -> str:
     parsed = urlparse(url.lower())
     domain = parsed.netloc
@@ -706,6 +745,8 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
         media_url = media_data.get('video_url') or media_data.get('display_url') or url
         play_count = media_data.get('video_play_count')
     
+    transcript_text = _extract_transcript(data)
+
     resolved_text = _pick_text(
         caption_text,
         data.get('caption'),
@@ -718,7 +759,7 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     return {
         'caption': resolved_text,
         'description': resolved_text,
-        'transcript': _pick_text(data.get('transcript')),
+        'transcript': transcript_text,
         'media_url': media_url,
         'author': author,
         'platform': platform,

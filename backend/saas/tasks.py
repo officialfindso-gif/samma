@@ -98,7 +98,7 @@ def scrape_and_process_post(self, post_id: int):
                     caption = item_data.get('caption', '')
                     description = item_data.get('description', '')
                     transcript = item_data.get('transcript', '')
-                    original_text = _choose_original_text(caption, description, transcript)
+                    original_text = _choose_original_text(transcript, caption, description)
                     description = _choose_original_text(description, caption, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
@@ -107,7 +107,7 @@ def scrape_and_process_post(self, post_id: int):
                     title = f"{profile.get('handle', '')} - Video #{i+1}"
                     description = item.get('desc', '')
                     transcript = ''
-                    original_text = _choose_original_text(description, transcript)
+                    original_text = _choose_original_text(transcript, description)
                     description = _choose_original_text(description, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
@@ -116,7 +116,7 @@ def scrape_and_process_post(self, post_id: int):
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Video #{i+1}"
                     description = item.get('description', '')
                     transcript = ''
-                    original_text = _choose_original_text(description, transcript)
+                    original_text = _choose_original_text(transcript, description)
                     description = _choose_original_text(description, transcript)
                     views = item.get('views')
                     likes = item.get('likes')
@@ -125,7 +125,7 @@ def scrape_and_process_post(self, post_id: int):
                     title = item.get('title', '') or f"{profile.get('handle', '')} - Post #{i+1}"
                     description = item.get('description', '')
                     transcript = ''
-                    original_text = _choose_original_text(description, transcript)
+                    original_text = _choose_original_text(transcript, description)
                     description = _choose_original_text(description, transcript)
                     views = None
                     likes = item.get('likes')
@@ -159,7 +159,7 @@ def scrape_and_process_post(self, post_id: int):
         caption = scraped_data.get('caption', '')
         description = scraped_data.get('description', '')
         transcript = scraped_data.get('transcript', '')
-        original_text = _choose_original_text(caption, description, transcript)
+        original_text = _choose_original_text(transcript, caption, description)
         normalized_description = _choose_original_text(description, caption, transcript)
 
         with transaction.atomic():
@@ -375,9 +375,9 @@ def scrape_competitor_posts():
                 platform=competitor.platform,
                 status='new',
                 original_text=_choose_original_text(
+                    scraped_data.get('transcript', ''),
                     scraped_data.get('caption', ''),
                     scraped_data.get('description', ''),
-                    scraped_data.get('transcript', ''),
                 ),
                 description=_choose_original_text(
                     scraped_data.get('description', ''),
@@ -450,9 +450,9 @@ def scrape_single_competitor(competitor_id: int):
             platform=competitor.platform,
             status='new',
             original_text=_choose_original_text(
+                scraped_data.get('transcript', ''),
                 scraped_data.get('caption', ''),
                 scraped_data.get('description', ''),
-                scraped_data.get('transcript', ''),
             ),
             description=_choose_original_text(
                 scraped_data.get('description', ''),

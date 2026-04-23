@@ -119,6 +119,42 @@ class PostProcessingTextFallbackTestCase(TestCase):
         self.assertEqual(post.description, 'service description text')
         mocked_delay.assert_called_once_with(post.id)
 
+    @patch('saas.tasks.process_post.delay')
+    @patch('saas.tasks.scrape_content')
+    def test_scrape_sets_original_from_transcript_when_available(self, mocked_scrape, mocked_delay):
+        mocked_scrape.return_value = {
+            'caption': 'service caption',
+            'description': 'service description',
+            'transcript': 'service transcript',
+            'platform': 'youtube',
+            'views_count': 1,
+            'likes_count': 1,
+            'comments_count': 0,
+            'shares_count': 0,
+            'engagement_rate': 1.0,
+            'video_duration': 10,
+            'published_at': None,
+            'play_count': 1,
+            'saves_count': 0,
+            'author_followers': 1,
+            'has_audio': True,
+            'is_video': True,
+        }
+        post = Post.objects.create(
+            workspace=self.workspace,
+            created_by=self.user,
+            source_url='https://youtube.com/watch?v=test',
+            status='new',
+        )
+
+        scrape_and_process_post.run(post.id)
+
+        post.refresh_from_db()
+        self.assertEqual(post.original_text, 'service transcript')
+        self.assertEqual(post.transcript, 'service transcript')
+        self.assertEqual(post.description, 'service description')
+        mocked_delay.assert_called_once_with(post.id)
+
 
 class YouTubeScraperFallbackTestCase(TestCase):
     @patch('saas.scraper.get_session')
