@@ -84,6 +84,32 @@ class PostProcessingTextFallbackTestCase(TestCase):
             'description from scraper',
         )
 
+    @patch('saas.tasks.generate_caption', return_value='cleaned original text')
+    def test_process_post_generates_original_result(self, mocked_generate):
+        post = Post.objects.create(
+            workspace=self.workspace,
+            created_by=self.user,
+            original_text='raw transcript text',
+            description='',
+            transcript='raw transcript text',
+            status='new',
+        )
+        Prompt.objects.create(
+            workspace=self.workspace,
+            name='Original default',
+            type='original',
+            content='Clean original text',
+            is_active=True,
+            is_default=True,
+        )
+
+        process_post.run(post.id)
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'ready')
+        self.assertEqual(post.generated_original, 'cleaned original text')
+        mocked_generate.assert_called_once()
+
     @patch('saas.tasks.process_post.delay')
     @patch('saas.tasks.scrape_content')
     def test_scrape_sets_original_from_description_when_caption_empty(self, mocked_scrape, mocked_delay):

@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 
 const PROMPT_TYPES: { value: Prompt["type"]; label: string; icon: string }[] = [
+  { value: "original", label: "Оригинал", icon: "🧹" },
   { value: "caption", label: "Подпись", icon: "📝" },
   { value: "script", label: "Скрипт", icon: "🎬" },
   { value: "title", label: "Заголовок", icon: "🏷️" },
@@ -255,7 +256,7 @@ export default function PromptsPage() {
         {error && <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg p-3">{error}</div>}
 
         <div className="mb-4 text-sm text-gray-400">
-          Создай <strong className="text-white">4 промпта</strong> — по одному для каждого типа. При нажатии &laquo;Обработать&raquo; все 4 будут использованы.
+          Создай <strong className="text-white">5 промптов</strong> — по одному для каждого типа. При нажатии &laquo;Обработать&raquo; все активные будут использованы.
         </div>
 
         <div className="flex-1 flex gap-4 overflow-hidden">

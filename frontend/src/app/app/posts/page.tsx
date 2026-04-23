@@ -72,7 +72,7 @@ export default function PostsPage() {
           <ul className="space-y-4">
             {posts.map((post) => {
               const hasTranscript = post.transcript && post.transcript.trim().length > 0;
-              const hasGeneratedContent = !!(post.generated_caption || post.generated_script || post.generated_title || post.generated_description);
+              const hasGeneratedContent = !!(post.generated_original || post.generated_caption || post.generated_script || post.generated_title || post.generated_description);
               const showAIBtn = hasTranscript && !hasGeneratedContent;
 
               return (

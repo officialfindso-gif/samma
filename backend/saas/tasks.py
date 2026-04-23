@@ -229,6 +229,7 @@ def process_post(self, post_id: int):
         'script': 'generated_script',
         'title': 'generated_title',
         'description': 'generated_description',
+        'original': 'generated_original',
     }
 
     try:

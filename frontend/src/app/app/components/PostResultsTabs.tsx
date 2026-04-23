@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { Post } from "@/lib/api";
 
 const RESULT_TABS = [
+  { key: "original", label: "Оригинал", emoji: "🧹", icon: "🧾" },
   { key: "caption", label: "Подпись", emoji: "✨", icon: "📝" },
   { key: "script", label: "Скрипт", emoji: "📺", icon: "🎬" },
   { key: "title", label: "Заголовок", emoji: "📌", icon: "🏷️" },
@@ -14,6 +15,7 @@ export function PostResultsTabs({ post }: { post: Post }) {
   const [activeTab, setActiveTab] = useState<string>("caption");
 
   const hasAnyResults =
+    post.generated_original ||
     post.generated_caption ||
     post.generated_script ||
     post.generated_title ||
@@ -25,6 +27,8 @@ export function PostResultsTabs({ post }: { post: Post }) {
 
   const getResultContent = (key: string): string => {
     switch (key) {
+      case "original":
+        return post.generated_original;
       case "caption":
         return post.generated_caption;
       case "script":

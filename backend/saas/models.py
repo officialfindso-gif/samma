@@ -116,6 +116,7 @@ class Prompt(models.Model):
         ('script', 'Script'),
         ('title', 'Title'),
         ('description', 'Description'),
+        ('original', 'Original'),
         ('other', 'Other'),
     )
 
@@ -211,6 +212,7 @@ class Post(models.Model):
     generated_script = models.TextField(blank=True)
     generated_title = models.TextField(blank=True)
     generated_description = models.TextField(blank=True)
+    generated_original = models.TextField(blank=True)
     description = models.TextField(blank=True, help_text='Описание поста/видео')
 
     # Метрики вирусности

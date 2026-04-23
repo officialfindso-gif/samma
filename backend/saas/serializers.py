@@ -48,7 +48,7 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'workspace', 'social_account', 'title', 'source_url',
             'platform', 'status', 'error_message', 'original_text', 'transcript',
             'generated_caption', 'generated_script', 'generated_title',
-            'generated_description', 'description', 'caption_prompt',
+            'generated_description', 'generated_original', 'description', 'caption_prompt',
             'views_count', 'likes_count', 'comments_count', 'shares_count',
             'engagement_rate', 'video_duration', 'published_at',
             'play_count', 'saves_count', 'author_followers', 'has_audio', 'is_video',

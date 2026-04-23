@@ -241,6 +241,7 @@ export interface Post {
   generated_script: string;
   generated_title: string;
   generated_description: string;
+  generated_original: string;
   description: string;
   error_message: string;
   // Метрики вирусности
@@ -265,7 +266,7 @@ export interface Prompt {
   id: number;
   workspace: number;
   name: string;
-  type: "caption" | "script" | "title" | "description" | "other";
+  type: "caption" | "script" | "title" | "description" | "original" | "other";
   content: string;
   is_active: boolean;
   is_default: boolean;
