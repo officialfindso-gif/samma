@@ -767,18 +767,31 @@ def _scrape_single_post(url: str, platform: str, api_base: str, user=None, max_r
     if platform == 'youtube' and not transcript_text:
         transcript_text = _fetch_youtube_transcript(session, url)
 
-    resolved_text = _pick_text(
-        caption_text,
-        data.get('caption'),
-        data.get('description'),
-        data.get('text'),
-        data.get('title'),
-        _extract_youtube_title(data) if platform == 'youtube' else '',
-    )
+    if platform == 'youtube':
+        caption_value = _pick_text(
+            transcript_text,
+            caption_text,
+            data.get('caption'),
+            data.get('text'),
+            data.get('title'),
+            _extract_youtube_title(data),
+        )
+        # Keep description strictly from YouTube description field.
+        description_value = _pick_text(data.get('description'))
+    else:
+        resolved_text = _pick_text(
+            caption_text,
+            data.get('caption'),
+            data.get('description'),
+            data.get('text'),
+            data.get('title'),
+        )
+        caption_value = resolved_text
+        description_value = resolved_text
 
     return {
-        'caption': resolved_text,
-        'description': resolved_text,
+        'caption': caption_value,
+        'description': description_value,
         'transcript': transcript_text,
         'media_url': media_url,
         'author': author,
