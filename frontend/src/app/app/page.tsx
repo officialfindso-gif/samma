@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, FormEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -84,20 +84,20 @@ export default function AppPage() {
   const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
 
   const columnLabels: Record<string, string> = {
-    source: "РСЃС‚РѕС‡РЅРёРє",
-    original: "РћСЂРёРіРёРЅР°Р»",
-    result: "Р РµР·СѓР»СЊС‚Р°С‚",
-    description: "РћРїРёСЃР°РЅРёРµ",
-    views: "РџСЂРѕСЃРјРѕС‚СЂС‹",
-    likes: "Р›Р°Р№РєРё",
-    comments: "РљРѕРјРјРµРЅС‚Р°СЂРёРё",
+    source: "Источник",
+    original: "Оригинал",
+    result: "Результат",
+    description: "Описание",
+    views: "Просмотры",
+    likes: "Лайки",
+    comments: "Комментарии",
     er: "ER%",
-    plays: "Р’РѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёСЏ",
-    saves: "РЎРѕС…СЂР°РЅРµРЅРёСЏ",
-    followers: "РџРѕРґРїРёСЃС‡РёРєРё",
-    platform: "РџР»Р°С‚С„РѕСЂРјР°",
-    status: "РЎС‚Р°С‚СѓСЃ",
-    actions: "Р”РµР№СЃС‚РІРёСЏ",
+    plays: "Воспроизведения",
+    saves: "Сохранения",
+    followers: "Подписчики",
+    platform: "Платформа",
+    status: "Статус",
+    actions: "Действия",
   };
 
   useEffect(() => {
@@ -105,10 +105,10 @@ export default function AppPage() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // РњРµСЂРґР¶РёРј СЃ РґРµС„РѕР»С‚РѕРј вЂ” РЅРѕРІС‹Рµ РєРѕР»РѕРЅРєРё РїРѕСЏРІСЏС‚СЃСЏ, СЃС‚Р°СЂС‹Рµ СЃРѕС…СЂР°РЅСЏС‚СЃСЏ
+        // Мерджим с дефолтом — новые колонки появятся, старые сохранятся
         setVisibleColumns((prev) => ({ ...prev, ...parsed }));
       } catch {
-        // Р•СЃР»Рё РѕС€РёР±РєР° РїР°СЂСЃРёРЅРіР° вЂ” РѕСЃС‚Р°РІР»СЏРµРј РґРµС„РѕР»С‚
+        // Если ошибка парсинга — оставляем дефолт
       }
     }
     // Load saved column order
@@ -183,7 +183,7 @@ export default function AppPage() {
     }
     setAccessToken(token);
 
-    // РџСЂРѕРІРµСЂСЏРµРј, РїРѕРєР°Р·С‹РІР°Р»Рё Р»Рё СѓР¶Рµ РѕРЅР±РѕСЂРґРёРЅРі
+    // Проверяем, показывали ли уже онбординг
     const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
     if (!hasSeenOnboarding) {
       setShowOnboarding(true);
@@ -193,13 +193,13 @@ export default function AppPage() {
   useEffect(() => {
     if (!accessToken) return;
     
-    // Р—Р°РіСЂСѓР¶Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРѕР»СЊР·РѕРІР°С‚РµР»Рµ
+    // Загружаем информацию о пользователе
     handleApiCall(() => getCurrentUser(accessToken))
         .then((user) => {
         setIsStaff(!!(user.is_staff || user.is_superuser));
       })
       .catch((err) => {
-        console.error("РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:", err);
+        console.error("Ошибка загрузки пользователя:", err);
       });
     
     setLoading(true);
@@ -211,7 +211,7 @@ export default function AppPage() {
       })
       .catch((err) => {
         console.error(err);
-        setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РІРѕСЂРєСЃРїРµР№СЃС‹");
+        setError(err instanceof Error ? err.message : "Не удалось загрузить воркспейсы");
       })
       .finally(() => setLoading(false));
   }, [accessToken, handleApiCall]);
@@ -220,12 +220,12 @@ export default function AppPage() {
     if (!accessToken || !activeWorkspaceId) return;
     setLoadingPosts(true);
     setError(null);
-    // РќРµ РѕС‚РїСЂР°РІР»СЏРµРј min_er РЅР° СЃРµСЂРІРµСЂ вЂ” С„РёР»СЊС‚СЂСѓРµРј С‚РѕР»СЊРєРѕ РЅР° РєР»РёРµРЅС‚Рµ
+    // Не отправляем min_er на сервер — фильтруем только на клиенте
     handleApiCall(() => getPosts(accessToken, activeWorkspaceId, { sort: sortBy, ordering: sortOrder }))
       .then((data) => setPosts(data))
       .catch((err) => {
         console.error(err);
-        setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїРѕСЃС‚С‹");
+        setError(err instanceof Error ? err.message : "Не удалось загрузить посты");
       })
       .finally(() => setLoadingPosts(false));
   }, [accessToken, activeWorkspaceId, sortBy, sortOrder, minER, handleApiCall]);
@@ -243,7 +243,7 @@ export default function AppPage() {
           if (updated && updated.status !== selectedPost.status) setSelectedPost(updated);
         }
       } catch (err) {
-        console.error("РћС€РёР±РєР° Р°РІС‚РѕРѕР±РЅРѕРІР»РµРЅРёСЏ:", err);
+        console.error("Ошибка автообновления:", err);
       }
     }, 3000);
     return () => clearInterval(interval);
@@ -262,7 +262,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РѕР±СЂР°Р±РѕС‚РєРё");
+      setError(err instanceof Error ? err.message : "Ошибка запуска обработки");
     }
   };
 
@@ -282,13 +282,13 @@ export default function AppPage() {
       setSelectedPosts(new Set());
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕР№ РѕР±СЂР°Р±РѕС‚РєРё");
+      setError(err instanceof Error ? err.message : "Ошибка массовой обработки");
     }
   };
 
   const handleDelete = async (postId: number) => {
     if (!accessToken) return;
-    if (!confirm("Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚РѕС‚ РїРѕСЃС‚? Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.")) return;
+    if (!confirm("Вы уверены, что хотите удалить этот пост? Это действие нельзя отменить.")) return;
     try {
       setError(null);
       await handleApiCall(() => deletePost(accessToken!, postId));
@@ -299,7 +299,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ РїРѕСЃС‚Р°");
+      setError(err instanceof Error ? err.message : "Ошибка удаления поста");
     }
   };
 
@@ -312,7 +312,7 @@ export default function AppPage() {
 
   const handleBulkDelete = async () => {
     if (!accessToken || selectedPosts.size === 0) return;
-    if (!confirm(`Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ ${selectedPosts.size} РїРѕСЃС‚РѕРІ? Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.`)) return;
+    if (!confirm(`Вы уверены, что хотите удалить ${selectedPosts.size} постов? Это действие нельзя отменить.`)) return;
     try {
       setError(null);
       for (const postId of Array.from(selectedPosts)) {
@@ -327,7 +327,7 @@ export default function AppPage() {
       setSelectedPosts(new Set());
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕРіРѕ СѓРґР°Р»РµРЅРёСЏ");
+      setError(err instanceof Error ? err.message : "Ошибка массового удаления");
     }
   };
 
@@ -371,7 +371,7 @@ export default function AppPage() {
     if (filterStatus !== "all" && post.status !== filterStatus) return false;
     if (filterPlatform !== "all" && post.platform !== filterPlatform) return false;
     if (searchQuery && !((post.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (post.original_text || "").toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-    // Р¤РёР»СЊС‚СЂ РїРѕ РјРёРЅРёРјР°Р»СЊРЅРѕРјСѓ Engagement Rate
+    // Фильтр по минимальному Engagement Rate
     if (minER) {
       const minErNum = parseFloat(minER);
       if (!isNaN(minErNum) && post.engagement_rate != null) {
@@ -408,7 +408,7 @@ export default function AppPage() {
     const newPosts = posts.filter((p) => p.status === "new");
     if (newPosts.length === 0) return;
     
-    if (!confirm(`РћР±СЂР°Р±РѕС‚Р°С‚СЊ РІСЃРµ РЅРѕРІС‹Рµ РїРѕСЃС‚С‹ (${newPosts.length} С€С‚.)?`)) return;
+    if (!confirm(`Обработать все новые посты (${newPosts.length} шт.)?`)) return;
     
     try {
       setError(null);
@@ -422,7 +422,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕР№ РѕР±СЂР°Р±РѕС‚РєРё");
+      setError(err instanceof Error ? err.message : "Ошибка массовой обработки");
     }
   };
 
@@ -439,7 +439,7 @@ export default function AppPage() {
   const handleCreateSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!accessToken || !activeWorkspaceId) {
-      setError("Р’С‹Р±РµСЂРё РІРѕСЂРєСЃРїРµР№СЃ РїРµСЂРµРґ СЃРѕР·РґР°РЅРёРµРј РїРѕСЃС‚Р°.");
+      setError("Выбери воркспейс перед созданием поста.");
       return;
     }
     try {
@@ -457,7 +457,7 @@ export default function AppPage() {
       setCreateTitle(""); setCreateSourceUrl(""); setCreateOriginalText(""); setCreateOpen(false);
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РїРѕСЃС‚");
+      setError(err instanceof Error ? err.message : "Не удалось создать пост");
     } finally { setCreateLoading(false); }
   };
 
@@ -484,22 +484,22 @@ export default function AppPage() {
 
           {error && <div className="mb-4 lg:mb-6 text-xs sm:text-sm text-gray-400 p-3 sm:p-4 bg-gray-800/30 rounded border border-gray-800/50">{error}</div>}
 
-          <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} />
+          <FiltersBar postsExist={sortedPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} />
 
           {loadingPosts ? (
-            <div className="text-xs sm:text-sm text-gray-400">Р—Р°РіСЂСѓР¶РєР° РїРѕСЃС‚РѕРІ...</div>
+            <div className="text-xs sm:text-sm text-gray-400">Загружка постов...</div>
           ) : sortedPosts.length === 0 ? (
             <div className="text-center py-12 sm:py-16 lg:py-20">
               <p className="text-base sm:text-lg lg:text-xl 2xl:text-2xl text-gray-400 mb-6 lg:mb-8">
                 {posts.length === 0
-                  ? "РџРѕСЃС‚РѕРІ РїРѕРєР° РЅРµС‚. РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІС‹Р№!"
-                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER 
-                  ? "РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ РїРѕ С„РёР»СЊС‚СЂР°Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ РёР·РјРµРЅРёС‚СЊ РїР°СЂР°РјРµС‚СЂС‹."
-                  : "РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ."}
+                  ? "Постов пока нет. Создайте первый!"
+                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER
+                  ? "Ничего не найдено по фильтрам. Попробуйте изменить параметры."
+                  : "Ничего не найдено."}
               </p>
-              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">РЎРѕР·РґР°С‚СЊ РїРѕСЃС‚</button>}
-              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER ) && (
-                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricSort(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">РЎР±СЂРѕСЃРёС‚СЊ С„РёР»СЊС‚СЂС‹</button>
+              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">Создать пост</button>}
+              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER) && (
+                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricSort(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">Сбросить фильтры</button>
               )}
             </div>
           ) : (
@@ -528,5 +528,4 @@ export default function AppPage() {
     </div>
   );
 }
-
 
