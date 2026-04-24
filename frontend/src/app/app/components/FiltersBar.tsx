@@ -60,12 +60,12 @@ export default function FiltersBar({
       <div className="hidden sm:flex sm:flex-wrap gap-2 sm:gap-3 items-center">
         <input type="text" placeholder="РџРѕРёСЃРє..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="px-3 py-2 text-xs sm:text-sm bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white w-full sm:w-48 lg:w-56 2xl:w-64 h-9 sm:h-10" />
 
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 text-xs sm:text-sm bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white h-9 sm:h-10">
-          <option value="all">Р’СЃРµ СЃС‚Р°С‚СѓСЃС‹</option>
-          <option value="new">РќРѕРІС‹Рµ</option>
-          <option value="in_progress">Р’ РѕР±СЂР°Р±РѕС‚РєРµ</option>
-          <option value="ready">Р“РѕС‚РѕРІС‹Рµ</option>
-          <option value="error">РћС€РёР±РєРё</option>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 text-xs sm:text-sm text-sky-100 bg-slate-800 border border-sky-500/40 rounded focus:outline-none focus:border-sky-300 h-9 sm:h-10">
+          <option value="all">?? Все статусы</option>
+          <option value="new">?? Новые</option>
+          <option value="in_progress">? В обработке</option>
+          <option value="ready">? Готовые</option>
+          <option value="error">? Ошибки</option>
         </select>
 
         <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="px-3 py-2 text-xs sm:text-sm bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white h-9 sm:h-10">
@@ -111,12 +111,12 @@ export default function FiltersBar({
       <div className="sm:hidden flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <input type="text" placeholder="РџРѕРёСЃРє..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-shrink-0 px-3 py-2 text-xs bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white w-28 h-9" />
 
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="flex-shrink-0 px-2 py-2 text-xs bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white h-9">
-          <option value="all">рџ“‹ РЎС‚Р°С‚СѓСЃС‹</option>
-          <option value="new">рџ†• РќРѕРІС‹Рµ</option>
-          <option value="in_progress">вљЎ Р’ СЂР°Р±РѕС‚Рµ</option>
-          <option value="ready">вњ… Р“РѕС‚РѕРІС‹Рµ</option>
-          <option value="error">вќЊ РћС€РёР±РєРё</option>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="flex-shrink-0 px-2 py-2 text-xs text-sky-100 bg-slate-800 border border-sky-500/40 rounded focus:outline-none focus:border-sky-300 h-9">
+          <option value="all">?? Статусы</option>
+          <option value="new">?? Новые</option>
+          <option value="in_progress">? В работе</option>
+          <option value="ready">? Готовые</option>
+          <option value="error">? Ошибки</option>
         </select>
 
         <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="flex-shrink-0 px-2 py-2 text-xs bg-gray-800/50 border border-gray-700 rounded focus:outline-none focus:border-white h-9">

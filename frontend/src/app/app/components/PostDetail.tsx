@@ -5,22 +5,6 @@ import type { Post } from "@/lib/api";
 import { PostResultsTabs } from "./PostResultsTabs";
 import PostNotes from "./PostNotes";
 
-const getPlatformMeta = (platform?: string | null) => {
-  const p = (platform || "instagram").toLowerCase();
-  switch (p) {
-    case "instagram":
-      return { icon: "📸", label: "Instagram", className: "bg-pink-500/20 text-pink-200 border border-pink-400/40" };
-    case "tiktok":
-      return { icon: "🎵", label: "TikTok", className: "bg-cyan-500/20 text-cyan-200 border border-cyan-400/40" };
-    case "linkedin":
-      return { icon: "💼", label: "LinkedIn", className: "bg-blue-500/20 text-blue-200 border border-blue-400/40" };
-    case "youtube":
-      return { icon: "📺", label: "YouTube", className: "bg-red-500/20 text-red-200 border border-red-400/40" };
-    default:
-      return { icon: "🌐", label: platform || "Platform", className: "bg-gray-700 text-gray-200 border border-gray-500/40" };
-  }
-};
-
 export default function PostDetail({
   selectedPost,
   setSelectedPost,
@@ -39,7 +23,6 @@ export default function PostDetail({
   accessToken: string | null;
 }) {
   const [showNotes, setShowNotes] = useState(false);
-  const platformMeta = getPlatformMeta(selectedPost.platform);
   return (
     <div
       className="fixed inset-y-0 right-0 w-full sm:w-96 md:w-[450px] lg:w-[500px] 2xl:w-[550px] border-l-2 border-gray-500 shadow-2xl overflow-y-auto"
@@ -147,9 +130,9 @@ export default function PostDetail({
 
         <div className="space-y-2 sm:space-y-3">
           <h4 className="text-xs sm:text-sm font-semibold text-gray-300 uppercase tracking-wide">Платформа</h4>
-          <div className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold ${platformMeta.className}`}>
-            <span>{platformMeta.icon}</span>
-            <span className="font-medium">{platformMeta.label}</span>
+          <div className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm ${ (selectedPost.platform || 'instagram') === 'instagram' ? 'bg-gray-700' : (selectedPost.platform || 'instagram') === 'tiktok' ? 'bg-gray-700' : (selectedPost.platform || 'instagram') === 'linkedin' ? 'bg-gray-700' : 'bg-gray-700' }`}>
+            {(selectedPost.platform || 'instagram') === 'instagram' ? '📸' : (selectedPost.platform || 'instagram') === 'tiktok' ? '🎵' : (selectedPost.platform || 'instagram') === 'linkedin' ? '💼' : '📺'}
+            <span className="font-medium">{selectedPost.platform || 'Instagram'}</span>
           </div>
         </div>
       </div>

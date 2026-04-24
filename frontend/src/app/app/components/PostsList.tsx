@@ -52,22 +52,6 @@ const getStatusMeta = (status: string) => {
   }
 };
 
-const getPlatformMeta = (platform?: string | null) => {
-  const p = (platform || "instagram").toLowerCase();
-  switch (p) {
-    case "instagram":
-      return { icon: "📸", label: "Instagram", className: "bg-pink-500/20 text-pink-200 border border-pink-400/40" };
-    case "tiktok":
-      return { icon: "🎵", label: "TikTok", className: "bg-cyan-500/20 text-cyan-200 border border-cyan-400/40" };
-    case "linkedin":
-      return { icon: "💼", label: "LinkedIn", className: "bg-blue-500/20 text-blue-200 border border-blue-400/40" };
-    case "youtube":
-      return { icon: "📺", label: "YouTube", className: "bg-red-500/20 text-red-200 border border-red-400/40" };
-    default:
-      return { icon: "🌐", label: platform || "Platform", className: "bg-gray-700 text-gray-200 border border-gray-500/40" };
-  }
-};
-
 export default function PostsList({
   filteredPosts,
   selectedPosts,
@@ -243,13 +227,9 @@ export default function PostsList({
           </div>
         );
       case "platform":
-        const platformMeta = getPlatformMeta(post.platform);
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
-            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${platformMeta.className}`}>
-              <span>{platformMeta.icon}</span>
-              <span>{platformMeta.label}</span>
-            </span>
+            <span className="inline-flex items-center gap-1">{post.platform === 'instagram' ? '📸' : post.platform === 'tiktok' ? '🎵' : post.platform === 'linkedin' ? '💼' : '📺'} {post.platform || 'Instagram'}</span>
           </div>
         );
       case "status": {
