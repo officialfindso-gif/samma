@@ -1193,6 +1193,60 @@ export async function getAdminApiErrors(accessToken: string): Promise<AdminApiEr
   return res.json();
 }
 
+export interface AdminUserRow {
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  date_joined: string;
+  workspaces_count: number;
+  posts_count: number;
+}
+
+export interface AdminUsersResponse {
+  total_users: number;
+  active_users: number;
+  users: AdminUserRow[];
+}
+
+/**
+ * GET /api/admin/users/
+ */
+export async function getAdminUsers(accessToken: string): Promise<AdminUsersResponse> {
+  const res = await fetch(`${API_URL}/api/admin/users/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get admin users: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * POST /api/admin/users/{id}/revoke/
+ */
+export async function revokeUserAccount(accessToken: string, userId: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}/revoke/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to revoke user: ${res.status} ${text}`);
+  }
+}
+
 
 // ========================
 // Invite Token API

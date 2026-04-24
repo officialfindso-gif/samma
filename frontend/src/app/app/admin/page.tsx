@@ -2,19 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAdminStats, getAdminApiErrors, getSystemSettings, updateSystemSettings, type AdminStats, type AdminApiErrors, type SystemSettings } from "@/lib/api";
+import {
+  getAdminStats,
+  getAdminApiErrors,
+  getAdminUsers,
+  revokeUserAccount,
+  getSystemSettings,
+  updateSystemSettings,
+  type AdminStats,
+  type AdminApiErrors,
+  type AdminUsersResponse,
+  type SystemSettings,
+} from "@/lib/api";
 
 export default function AdminPage() {
   const router = useRouter();
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [apiErrors, setApiErrors] = useState<AdminApiErrors | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUsersResponse | null>(null);
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
   const [maxParseDepth, setMaxParseDepth] = useState(10);
   const [maxWorkspaces, setMaxWorkspaces] = useState(5);
   const [maxApiCalls, setMaxApiCalls] = useState(500);
   const [savingDepth, setSavingDepth] = useState(false);
   const [savingLimits, setSavingLimits] = useState(false);
+  const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +48,16 @@ export default function AdminPage() {
       try {
         setLoading(true);
         setError(null);
-        const [statsData, settingsData, errorsData] = await Promise.all([
+        const [statsData, settingsData, errorsData, usersData] = await Promise.all([
           getAdminStats(accessToken),
           getSystemSettings(accessToken),
           getAdminApiErrors(accessToken),
+          getAdminUsers(accessToken),
         ]);
         setStats(statsData);
         setSystemSettings(settingsData);
         setApiErrors(errorsData);
+        setAdminUsers(usersData);
         setMaxParseDepth(settingsData.max_parse_depth || 10);
         setMaxWorkspaces(settingsData.max_workspaces_per_user || 5);
         setMaxApiCalls(settingsData.max_api_calls_per_day || 500);
@@ -84,6 +99,24 @@ export default function AdminPage() {
       alert("❌ Ошибка сохранения");
     } finally {
       setSavingLimits(false);
+    }
+  };
+
+  const handleRevokeUser = async (userId: number, username: string) => {
+    if (!accessToken) return;
+    const ok = window.confirm(`Отозвать аккаунт ${username}? Пользователь больше не сможет войти.`);
+    if (!ok) return;
+
+    try {
+      setRevokingUserId(userId);
+      await revokeUserAccount(accessToken, userId);
+      const usersData = await getAdminUsers(accessToken);
+      setAdminUsers(usersData);
+      alert("Аккаунт отозван");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Ошибка отзыва аккаунта");
+    } finally {
+      setRevokingUserId(null);
     }
   };
 
@@ -297,7 +330,7 @@ export default function AdminPage() {
         )}
 
         {/* Основные метрики */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-800 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-gray-600 rounded-md p-3">
@@ -357,9 +390,80 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+
+          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-800 p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-gray-600 rounded-md p-3">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2m12 0H7m10-11a3 3 0 11-6 0 3 3 0 016 0zm-10 0a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-400 truncate">
+                    Всего пользователей
+                  </dt>
+                  <dd className="text-3xl font-semibold text-white">
+                    {adminUsers?.total_users ?? 0}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Статусы и платформы */}
+        {adminUsers && (
+          <div className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-lg shadow-lg border border-gray-700/30 mb-8">
+            <div className="px-6 py-4 border-b border-gray-700/30 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Пользователи</h2>
+              <div className="text-sm text-gray-400">
+                Активных: <span className="text-white font-semibold">{adminUsers.active_users}</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-700/30">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Пользователь</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Дата создания</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Статус</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Действие</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700/30">
+                  {adminUsers.users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-800/50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{user.username}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{user.email || "-"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        {new Date(user.date_joined).toLocaleString("ru-RU")}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {user.is_active ? (
+                          <span className="px-2 py-1 rounded text-xs bg-emerald-900/30 text-emerald-300">Активен</span>
+                        ) : (
+                          <span className="px-2 py-1 rounded text-xs bg-red-900/30 text-red-300">Отозван</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          disabled={!user.is_active || revokingUserId === user.id}
+                          onClick={() => handleRevokeUser(user.id, user.username)}
+                          className="px-3 py-1.5 rounded bg-red-900/30 text-red-300 border border-red-700/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {revokingUserId === user.id ? "..." : "Отозвать"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Статусы постов */}
           <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-800">

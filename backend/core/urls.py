@@ -14,6 +14,8 @@ from saas.views import (
     InviteTokenViewSet,
     AdminStatsView,
     AdminApiErrorsView,
+    AdminUsersView,
+    AdminRevokeUserView,
     CurrentUserView,
     RegisterView,
     IssueAccountView,
@@ -51,5 +53,7 @@ urlpatterns = [
     path('api/auth/me/', CurrentUserView.as_view(), name='current_user'),
     path('api/admin/stats/', AdminStatsView.as_view(), name='admin_stats'),
     path('api/admin/api-errors/', AdminApiErrorsView.as_view(), name='admin_api_errors'),
+    path('api/admin/users/', AdminUsersView.as_view(), name='admin_users'),
+    path('api/admin/users/<int:user_id>/revoke/', AdminRevokeUserView.as_view(), name='admin_revoke_user'),
     path('api/', include(router.urls)),
 ]

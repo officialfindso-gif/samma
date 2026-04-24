@@ -5,6 +5,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import Count, Prefetch
 from django.utils.functional import cached_property
+from django.contrib.auth import get_user_model
 
 from .models import (
     Workspace,
@@ -467,6 +468,8 @@ from django.db.models import Count, Q
 from datetime import timedelta
 from django.utils import timezone
 
+User = get_user_model()
+
 
 class CurrentUserView(APIView):
     """
@@ -624,6 +627,73 @@ class AdminApiErrorsView(APIView):
             'recent_errors': recent_errors,
             'top_error_users': top_error_users,
         })
+
+
+class AdminUsersView(APIView):
+    """
+    Список пользователей для админки.
+    GET /api/admin/users/
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        users_qs = User.objects.annotate(
+            workspaces_count=Count('workspace_memberships__workspace', distinct=True),
+            posts_count=Count('posts', distinct=True),
+        ).order_by('-date_joined')
+
+        users_data = []
+        for user in users_qs:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_active': user.is_active,
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser,
+                'date_joined': user.date_joined,
+                'workspaces_count': user.workspaces_count,
+                'posts_count': user.posts_count,
+            })
+
+        return Response({
+            'total_users': users_qs.count(),
+            'active_users': users_qs.filter(is_active=True).count(),
+            'users': users_data,
+        })
+
+
+class AdminRevokeUserView(APIView):
+    """
+    Отозвать аккаунт пользователя (деактивировать).
+    POST /api/admin/users/<user_id>/revoke/
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, user_id: int):
+        if request.user.id == user_id:
+            return Response(
+                {'detail': 'You cannot revoke your own account.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if user.is_superuser:
+            return Response(
+                {'detail': 'Superuser account cannot be revoked from this action.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        return Response({'detail': 'Account revoked.', 'user_id': user.id})
 
 
 
