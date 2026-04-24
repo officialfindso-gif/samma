@@ -5,6 +5,7 @@ import type { Post } from "@/lib/api";
 import { PostResultsTabs } from "./PostResultsTabs";
 
 type ColumnWidths = Record<string, number>;
+const METRIC_FILTER_COLUMNS = new Set(["views", "likes", "comments", "er", "plays", "saves", "followers"]);
 
 const DEFAULT_WIDTHS: ColumnWidths = {
   checkbox: 44,
@@ -56,6 +57,9 @@ export default function PostsList({
   handleProcess,
   handleDelete,
   formatNumber,
+  activeMetricFilterKey,
+  metricFilters,
+  onMetricHeaderClick,
 }: {
   filteredPosts: Post[];
   selectedPosts: Set<number>;
@@ -69,6 +73,9 @@ export default function PostsList({
   handleProcess: (id: number) => Promise<void> | void;
   handleDelete: (id: number) => Promise<void> | void;
   formatNumber: (n: number) => string;
+  activeMetricFilterKey: string | null;
+  metricFilters: Record<string, { min: string; max: string }>;
+  onMetricHeaderClick: (columnKey: string) => void;
 }) {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_WIDTHS);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -134,9 +141,25 @@ export default function PostsList({
   // Render single column header cell
   const renderHeaderCell = (key: string) => {
     if (!visibleColumns[key]) return null;
+    const isMetric = METRIC_FILTER_COLUMNS.has(key);
+    const hasMetricFilter = Boolean(metricFilters[key]?.min || metricFilters[key]?.max);
+    const isMetricActive = activeMetricFilterKey === key;
     return (
       <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
-        <span className="truncate">{columnLabels[key] || key}</span>
+        {isMetric ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMetricHeaderClick(key);
+            }}
+            className={`truncate text-left hover:text-sky-200 ${isMetricActive ? "text-sky-300" : ""}`}
+            title="Открыть фильтр диапазона"
+          >
+            {columnLabels[key] || key}{hasMetricFilter ? " •" : ""}
+          </button>
+        ) : (
+          <span className="truncate">{columnLabels[key] || key}</span>
+        )}
         <div className="w-1 h-6 hover:bg-blue-500/50 hover:w-1.5 transition-all cursor-col-resize ml-auto" onMouseDown={(e) => handleResizeStart(e, key)} style={{ backgroundColor: resizingColumn === key ? "#3b82f6" : "transparent" }} />
       </div>
     );
