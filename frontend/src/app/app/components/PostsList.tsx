@@ -125,6 +125,7 @@ export default function PostsList({
   }, [resizingColumn, startX, startWidth, tempWidth, columnWidths]);
 
   const getColumnWidth = (columnKey: string): number => {
+    if (columnKey === "checkbox") return DEFAULT_WIDTHS.checkbox;
     if (resizingColumn === columnKey && tempWidth > 0) return tempWidth;
     return columnWidths[columnKey] || DEFAULT_WIDTHS[columnKey] || 100;
   };
@@ -349,7 +350,6 @@ export default function PostsList({
           <div className="flex items-center px-2 lg:px-4 py-2 lg:py-3 bg-gradient-to-r from-gray-800/70 to-gray-700/50 border-b border-gray-600/30 text-xs lg:text-sm font-semibold text-gray-300 uppercase tracking-wider backdrop-blur-sm w-max">
             <div className="flex items-center justify-center flex-shrink-0 border-r border-gray-600/20" style={{ width: getColumnWidth("checkbox") }}>
               <input type="checkbox" checked={selectedPosts.size === filteredPosts.length && filteredPosts.length > 0} onChange={toggleSelectAll} className="w-3.5 h-3.5 lg:w-4 lg:h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
-              <div className="w-1 h-6 hover:bg-blue-500/50 hover:w-1.5 transition-all cursor-col-resize ml-auto" onMouseDown={(e) => handleResizeStart(e, "checkbox")} style={{ backgroundColor: resizingColumn === "checkbox" ? "#3b82f6" : "transparent" }} />
             </div>
             {columnOrder.map(renderHeaderCell)}
           </div>
