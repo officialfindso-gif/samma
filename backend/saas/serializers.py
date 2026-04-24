@@ -293,6 +293,66 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class IssueAccountSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, min_length=6)
+    workspace = serializers.PrimaryKeyRelatedField(
+        queryset=Workspace.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    role = serializers.ChoiceField(
+        choices=['admin', 'editor', 'viewer'],
+        required=False,
+        default='viewer',
+    )
+    create_personal_workspace = serializers.BooleanField(required=False, default=False)
+
+    def create(self, validated_data):
+        workspace = validated_data.pop('workspace', None)
+        role = validated_data.pop('role', 'viewer')
+        create_personal_workspace = validated_data.pop('create_personal_workspace', False)
+        password = validated_data.pop('password')
+
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            password=password,
+        )
+
+        if workspace:
+            WorkspaceMember.objects.create(
+                workspace=workspace,
+                user=user,
+                role=role,
+            )
+
+        if create_personal_workspace or workspace is None:
+            ws_name = f"{user.username}'s Workspace"
+            personal_workspace = Workspace.objects.create(
+                name=ws_name,
+                owner=user,
+                seats_limit=1,
+            )
+            WorkspaceMember.objects.create(
+                workspace=personal_workspace,
+                user=user,
+                role='owner',
+            )
+            from .management.commands.setup_default_prompts import DEFAULT_PROMPTS
+            for prompt_data in DEFAULT_PROMPTS:
+                Prompt.objects.create(
+                    workspace=personal_workspace,
+                    name=prompt_data['name'],
+                    type=prompt_data['type'],
+                    content=prompt_data['content'],
+                    is_default=prompt_data['is_default'],
+                )
+
+        return user
+
+
 class PostNoteSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.username', read_only=True, allow_null=True)
 

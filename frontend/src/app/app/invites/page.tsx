@@ -7,6 +7,7 @@ import {
   getInviteTokens,
   createInviteToken,
   deleteInviteToken,
+  issueAccount,
   Workspace,
   InviteToken,
 } from "@/lib/api";
@@ -28,6 +29,13 @@ export default function InvitesPage() {
   const [creating, setCreating] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showIssueForm, setShowIssueForm] = useState(false);
+  const [issueUsername, setIssueUsername] = useState("");
+  const [issueEmail, setIssueEmail] = useState("");
+  const [issuePassword, setIssuePassword] = useState("");
+  const [issueRole, setIssueRole] = useState("viewer");
+  const [issueWorkspace, setIssueWorkspace] = useState<string>("");
+  const [issueCreating, setIssueCreating] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -98,6 +106,39 @@ export default function InvitesPage() {
     }
   };
 
+  const handleIssueAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken) return;
+    setIssueCreating(true);
+    setError(null);
+    try {
+      const payload: {
+        username: string;
+        email?: string;
+        password: string;
+        workspace?: number;
+        role?: "admin" | "editor" | "viewer";
+      } = {
+        username: issueUsername,
+        password: issuePassword,
+        role: issueRole as "admin" | "editor" | "viewer",
+      };
+      if (issueEmail.trim()) payload.email = issueEmail.trim();
+      if (issueWorkspace) payload.workspace = Number(issueWorkspace);
+      await issueAccount(accessToken, payload);
+      setIssueUsername("");
+      setIssueEmail("");
+      setIssuePassword("");
+      setIssueRole("viewer");
+      setIssueWorkspace("");
+      alert("Аккаунт выдан");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to issue account");
+    } finally {
+      setIssueCreating(false);
+    }
+  };
+
   const getInviteLink = (token: string) =>
     `${window.location.origin}/register?token=${token}`;
 
@@ -152,6 +193,12 @@ export default function InvitesPage() {
           >
             ➕ Новый токен
           </button>
+          <button
+            onClick={() => setShowIssueForm(!showIssueForm)}
+            className="mb-6 ml-2 px-4 py-2 bg-gray-700 text-white hover:bg-gray-600 rounded-lg text-sm font-medium"
+          >
+            👤 Выдать аккаунт
+          </button>
 
           {showForm && (
             <form onSubmit={handleCreate} className="mb-6 p-4 bg-gradient-to-br from-gray-900/60 to-gray-800/40 border border-gray-700/30 rounded-xl space-y-3">
@@ -194,6 +241,51 @@ export default function InvitesPage() {
                   {creating ? "Создаём..." : "🔑 Создать"}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Отмена</button>
+              </div>
+            </form>
+          )}
+
+          {showIssueForm && (
+            <form onSubmit={handleIssueAccount} className="mb-6 p-4 bg-gradient-to-br from-gray-900/60 to-gray-800/40 border border-gray-700/30 rounded-xl space-y-3">
+              <div className="text-sm font-medium">Выдача аккаунта без приглашения</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1 text-white font-medium">Логин *</label>
+                  <input type="text" value={issueUsername} onChange={(e) => setIssueUsername(e.target.value)} className="w-full rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-white" required />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1 text-white font-medium">Пароль *</label>
+                  <input type="password" minLength={6} value={issuePassword} onChange={(e) => setIssuePassword(e.target.value)} className="w-full rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-white" required />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1 text-white font-medium">Email (опционально)</label>
+                  <input type="email" value={issueEmail} onChange={(e) => setIssueEmail(e.target.value)} placeholder="user@example.com" className="w-full rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1 text-white font-medium">Роль</label>
+                  <select value={issueRole} onChange={(e) => setIssueRole(e.target.value)} className="w-full rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-white">
+                    <option value="viewer">Наблюдатель</option>
+                    <option value="editor">Редактор</option>
+                    <option value="admin">Администратор</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs mb-1 text-white font-medium">Воркспейс (опционально)</label>
+                <select value={issueWorkspace} onChange={(e) => setIssueWorkspace(e.target.value)} className="w-full rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-white">
+                  <option value="">Личный воркспейс (автосоздание)</option>
+                  {workspaces.map((w) => (
+                    <option key={w.id} value={String(w.id)}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" disabled={issueCreating} className="px-4 py-2 bg-white text-black hover:bg-gray-100 rounded-lg text-sm font-medium disabled:opacity-60">
+                  {issueCreating ? "Создаём..." : "Выдать аккаунт"}
+                </button>
+                <button type="button" onClick={() => setShowIssueForm(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Отмена</button>
               </div>
             </form>
           )}

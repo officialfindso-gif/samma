@@ -33,6 +33,7 @@ from .serializers import (
     WorkspaceActivitySerializer,
     InviteTokenSerializer,
     RegisterSerializer,
+    IssueAccountSerializer,
     PostNoteSerializer,
     ApiCallLogSerializer,
 )
@@ -659,6 +660,34 @@ class RegisterView(APIView):
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class IssueAccountView(APIView):
+    """
+    Выдать пользователю аккаунт без админки и без инвайта.
+    POST /api/auth/issue-account/
+    Доступ: авторизованный owner/admin workspace.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = IssueAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        workspace = serializer.validated_data.get('workspace')
+        if workspace:
+            role = get_member_role(request.user, workspace.id)
+            if role not in ('owner', 'admin'):
+                raise PermissionDenied('Only owner/admin can issue accounts for this workspace.')
+
+        user = serializer.save()
+        return Response({
             'user': {
                 'id': user.id,
                 'username': user.username,

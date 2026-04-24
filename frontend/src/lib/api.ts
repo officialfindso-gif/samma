@@ -1220,6 +1220,15 @@ export interface CreateInviteToken {
   expires_at: string;
 }
 
+export interface IssueAccountPayload {
+  username: string;
+  email?: string;
+  password: string;
+  workspace?: number | null;
+  role?: "admin" | "editor" | "viewer";
+  create_personal_workspace?: boolean;
+}
+
 /**
  * GET /api/invites/
  */
@@ -1292,6 +1301,30 @@ export async function registerWithInvite(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Registration failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * POST /api/auth/issue-account/
+ */
+export async function issueAccount(
+  accessToken: string,
+  data: IssueAccountPayload
+): Promise<{ user: { id: number; username: string; email: string } }> {
+  const res = await fetch(`${API_URL}/api/auth/issue-account/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to issue account: ${res.status} ${text}`);
   }
   return res.json();
 }

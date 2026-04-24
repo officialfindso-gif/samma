@@ -16,6 +16,7 @@ from saas.views import (
     AdminApiErrorsView,
     CurrentUserView,
     RegisterView,
+    IssueAccountView,
     PostNoteViewSet,
     ApiCallLogViewSet,
 )
@@ -46,6 +47,7 @@ urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
     path('api/auth/register/', RegisterView.as_view(), name='register'),
+    path('api/auth/issue-account/', IssueAccountView.as_view(), name='issue_account'),
     path('api/auth/me/', CurrentUserView.as_view(), name='current_user'),
     path('api/admin/stats/', AdminStatsView.as_view(), name='admin_stats'),
     path('api/admin/api-errors/', AdminApiErrorsView.as_view(), name='admin_api_errors'),
