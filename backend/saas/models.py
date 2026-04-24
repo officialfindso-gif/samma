@@ -450,6 +450,25 @@ class ApiCallLog(models.Model):
         return f'{self.platform} - {self.user} - {self.created_at.strftime("%Y-%m-%d %H:%M")}'
 
 
+class UserLicense(models.Model):
+    """Ручные даты лицензии пользователя для админки."""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='license',
+    )
+    license_start_date = models.DateField(null=True, blank=True)
+    license_end_date = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Лицензия пользователя'
+        verbose_name_plural = 'Лицензии пользователей'
+
+    def __str__(self):
+        return f'License for user #{self.user_id}'
+
+
 class WorkspaceActivity(models.Model):
     """История взаимодействий с клиентами"""
     

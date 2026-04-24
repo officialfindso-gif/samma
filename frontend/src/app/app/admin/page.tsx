@@ -7,6 +7,7 @@ import {
   getAdminApiErrors,
   getAdminUsers,
   revokeUserAccount,
+  updateUserLicense,
   getSystemSettings,
   updateSystemSettings,
   type AdminStats,
@@ -28,6 +29,8 @@ export default function AdminPage() {
   const [savingDepth, setSavingDepth] = useState(false);
   const [savingLimits, setSavingLimits] = useState(false);
   const [revokingUserId, setRevokingUserId] = useState<number | null>(null);
+  const [savingLicenseUserId, setSavingLicenseUserId] = useState<number | null>(null);
+  const [licenseEdits, setLicenseEdits] = useState<Record<number, { start: string; end: string }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +61,17 @@ export default function AdminPage() {
         setSystemSettings(settingsData);
         setApiErrors(errorsData);
         setAdminUsers(usersData);
+        setLicenseEdits(
+          Object.fromEntries(
+            usersData.users.map((u) => [
+              u.id,
+              {
+                start: u.license_start_date || "",
+                end: u.license_end_date || "",
+              },
+            ])
+          )
+        );
         setMaxParseDepth(settingsData.max_parse_depth || 10);
         setMaxWorkspaces(settingsData.max_workspaces_per_user || 5);
         setMaxApiCalls(settingsData.max_api_calls_per_day || 500);
@@ -112,11 +126,63 @@ export default function AdminPage() {
       await revokeUserAccount(accessToken, userId);
       const usersData = await getAdminUsers(accessToken);
       setAdminUsers(usersData);
+      setLicenseEdits(
+        Object.fromEntries(
+          usersData.users.map((u) => [
+            u.id,
+            {
+              start: u.license_start_date || "",
+              end: u.license_end_date || "",
+            },
+          ])
+        )
+      );
       alert("Аккаунт отозван");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Ошибка отзыва аккаунта");
     } finally {
       setRevokingUserId(null);
+    }
+  };
+
+  const handleLicenseChange = (userId: number, field: "start" | "end", value: string) => {
+    setLicenseEdits((prev) => ({
+      ...prev,
+      [userId]: {
+        start: field === "start" ? value : (prev[userId]?.start ?? ""),
+        end: field === "end" ? value : (prev[userId]?.end ?? ""),
+      },
+    }));
+  };
+
+  const handleSaveLicense = async (userId: number) => {
+    if (!accessToken) return;
+    const row = licenseEdits[userId] || { start: "", end: "" };
+
+    try {
+      setSavingLicenseUserId(userId);
+      await updateUserLicense(accessToken, userId, {
+        license_start_date: row.start || null,
+        license_end_date: row.end || null,
+      });
+      const usersData = await getAdminUsers(accessToken);
+      setAdminUsers(usersData);
+      setLicenseEdits(
+        Object.fromEntries(
+          usersData.users.map((u) => [
+            u.id,
+            {
+              start: u.license_start_date || "",
+              end: u.license_end_date || "",
+            },
+          ])
+        )
+      );
+      alert("Даты лицензии сохранены");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Ошибка сохранения лицензии");
+    } finally {
+      setSavingLicenseUserId(null);
     }
   };
 
@@ -428,6 +494,8 @@ export default function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Пользователь</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Дата создания</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Лицензия c</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Лицензия до</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Статус</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Действие</th>
                   </tr>
@@ -441,6 +509,22 @@ export default function AdminPage() {
                         {new Date(user.date_joined).toLocaleString("ru-RU")}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <input
+                          type="date"
+                          value={licenseEdits[user.id]?.start || ""}
+                          onChange={(e) => handleLicenseChange(user.id, "start", e.target.value)}
+                          className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-gray-200"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <input
+                          type="date"
+                          value={licenseEdits[user.id]?.end || ""}
+                          onChange={(e) => handleLicenseChange(user.id, "end", e.target.value)}
+                          className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-gray-200"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {user.is_active ? (
                           <span className="px-2 py-1 rounded text-xs bg-emerald-900/30 text-emerald-300">Активен</span>
                         ) : (
@@ -448,13 +532,22 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          disabled={!user.is_active || revokingUserId === user.id}
-                          onClick={() => handleRevokeUser(user.id, user.username)}
-                          className="px-3 py-1.5 rounded bg-red-900/30 text-red-300 border border-red-700/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {revokingUserId === user.id ? "..." : "Отозвать"}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={savingLicenseUserId === user.id}
+                            onClick={() => handleSaveLicense(user.id)}
+                            className="px-3 py-1.5 rounded bg-gray-700/50 text-white border border-gray-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {savingLicenseUserId === user.id ? "..." : "Сохранить"}
+                          </button>
+                          <button
+                            disabled={!user.is_active || revokingUserId === user.id}
+                            onClick={() => handleRevokeUser(user.id, user.username)}
+                            className="px-3 py-1.5 rounded bg-red-900/30 text-red-300 border border-red-700/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {revokingUserId === user.id ? "..." : "Отозвать"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

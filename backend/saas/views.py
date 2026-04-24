@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Count, Prefetch
 from django.utils.functional import cached_property
 from django.contrib.auth import get_user_model
+from django.utils.dateparse import parse_date
 
 from .models import (
     Workspace,
@@ -21,6 +22,7 @@ from .models import (
     InviteToken,
     PostNote,
     ApiCallLog,
+    UserLicense,
 )
 from .serializers import (
     WorkspaceSerializer,
@@ -640,7 +642,7 @@ class AdminUsersView(APIView):
         users_qs = User.objects.annotate(
             workspaces_count=Count('workspace_memberships__workspace', distinct=True),
             posts_count=Count('posts', distinct=True),
-        ).order_by('-date_joined')
+        ).select_related('license').order_by('-date_joined')
 
         users_data = []
         for user in users_qs:
@@ -654,6 +656,8 @@ class AdminUsersView(APIView):
                 'date_joined': user.date_joined,
                 'workspaces_count': user.workspaces_count,
                 'posts_count': user.posts_count,
+                'license_start_date': user.license.license_start_date if hasattr(user, 'license') else None,
+                'license_end_date': user.license.license_end_date if hasattr(user, 'license') else None,
             })
 
         return Response({
@@ -694,6 +698,45 @@ class AdminRevokeUserView(APIView):
         user.is_active = False
         user.save(update_fields=['is_active'])
         return Response({'detail': 'Account revoked.', 'user_id': user.id})
+
+
+class AdminUpdateUserLicenseView(APIView):
+    """
+    Обновить даты лицензии пользователя.
+    PATCH /api/admin/users/<user_id>/license/
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def patch(self, request, user_id: int):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        start_raw = request.data.get('license_start_date', None)
+        end_raw = request.data.get('license_end_date', None)
+
+        start_date = parse_date(start_raw) if start_raw else None
+        end_date = parse_date(end_raw) if end_raw else None
+
+        if start_raw and not start_date:
+            return Response({'detail': 'Invalid license_start_date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+        if end_raw and not end_date:
+            return Response({'detail': 'Invalid license_end_date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+        if start_date and end_date and end_date < start_date:
+            return Response({'detail': 'license_end_date cannot be earlier than license_start_date.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        license_obj, _ = UserLicense.objects.get_or_create(user=user)
+        license_obj.license_start_date = start_date
+        license_obj.license_end_date = end_date
+        license_obj.save(update_fields=['license_start_date', 'license_end_date', 'updated_at'])
+
+        return Response({
+            'detail': 'License dates updated.',
+            'user_id': user.id,
+            'license_start_date': license_obj.license_start_date,
+            'license_end_date': license_obj.license_end_date,
+        })
 
 
 

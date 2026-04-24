@@ -1203,6 +1203,8 @@ export interface AdminUserRow {
   date_joined: string;
   workspaces_count: number;
   posts_count: number;
+  license_start_date: string | null;
+  license_end_date: string | null;
 }
 
 export interface AdminUsersResponse {
@@ -1244,6 +1246,30 @@ export async function revokeUserAccount(accessToken: string, userId: number): Pr
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to revoke user: ${res.status} ${text}`);
+  }
+}
+
+/**
+ * PATCH /api/admin/users/{id}/license/
+ */
+export async function updateUserLicense(
+  accessToken: string,
+  userId: number,
+  data: { license_start_date: string | null; license_end_date: string | null }
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/admin/users/${userId}/license/`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (res.status === 401) throw new Error("Unauthorized");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update user license: ${res.status} ${text}`);
   }
 }
 

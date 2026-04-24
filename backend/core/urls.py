@@ -16,6 +16,7 @@ from saas.views import (
     AdminApiErrorsView,
     AdminUsersView,
     AdminRevokeUserView,
+    AdminUpdateUserLicenseView,
     CurrentUserView,
     RegisterView,
     IssueAccountView,
@@ -55,5 +56,6 @@ urlpatterns = [
     path('api/admin/api-errors/', AdminApiErrorsView.as_view(), name='admin_api_errors'),
     path('api/admin/users/', AdminUsersView.as_view(), name='admin_users'),
     path('api/admin/users/<int:user_id>/revoke/', AdminRevokeUserView.as_view(), name='admin_revoke_user'),
+    path('api/admin/users/<int:user_id>/license/', AdminUpdateUserLicenseView.as_view(), name='admin_update_user_license'),
     path('api/', include(router.urls)),
 ]
