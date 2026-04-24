@@ -431,7 +431,7 @@ export default function PostsList({
 
       {/* Десктопное отображение таблицей */}
       <div className="hidden md:block w-full bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-xl border border-gray-700/30 shadow-2xl backdrop-blur-sm ring-1 ring-gray-700/20 overflow-hidden">
-        <div ref={tableScrollRef} className="overflow-x-auto posts-table-container" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
+        <div ref={tableScrollRef} className="overflow-x-auto posts-table-container scrollbar-hide" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
           <div ref={tableContentRef} className="w-max">
           {/* Table Header */}
           <div className="flex items-center px-2 lg:px-4 py-2 lg:py-3 bg-gradient-to-r from-gray-800/70 to-gray-700/50 border-b border-gray-600/30 text-xs lg:text-sm font-semibold text-gray-300 uppercase tracking-wider backdrop-blur-sm w-max">
