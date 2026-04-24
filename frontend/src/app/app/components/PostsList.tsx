@@ -361,7 +361,7 @@ export default function PostsList({
               const isActive = selectedPost?.id === post.id;
 
               return (
-                <div key={post.id} className={`flex items-center py-2 lg:py-3 hover:bg-gradient-to-r hover:from-gray-800/40 hover:to-gray-700/30 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-gray-900/20 w-max ${isActive ? 'bg-gray-700' : ''}`} onClick={() => setSelectedPost(post)}>
+                <div key={post.id} className={`flex items-center px-2 lg:px-4 py-2 lg:py-3 hover:bg-gradient-to-r hover:from-gray-800/40 hover:to-gray-700/30 transition-all duration-200 cursor-pointer group hover:shadow-lg hover:shadow-gray-900/20 w-max ${isActive ? 'bg-gray-700' : ''}`} onClick={() => setSelectedPost(post)}>
                   <div className="flex items-center justify-center flex-shrink-0 border-r border-gray-600/20" style={{ width: getColumnWidth("checkbox") }} onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={isSelected} onChange={() => togglePostSelection(post.id)} className="w-3.5 h-3.5 lg:w-4 lg:h-4 rounded border-gray-600 bg-gray-800 checked:bg-white checked:border-white cursor-pointer" />
                   </div>
