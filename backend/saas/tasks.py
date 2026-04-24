@@ -24,6 +24,124 @@ def _choose_original_text(*candidates):
     return ''
 
 
+def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: int):
+    if scraped_data.get('error'):
+        raise RuntimeError(str(scraped_data.get('error')))
+
+    created_post_ids = []
+    platform = scraped_data.get('platform') or competitor.platform
+    profile_items = scraped_data.get('posts') or []
+
+    if profile_items and platform in ('instagram', 'tiktok', 'youtube', 'linkedin'):
+        for i, item in enumerate(profile_items[:max_items]):
+            if platform == 'instagram':
+                item_data = item.get('data', {})
+                title = f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                description = item_data.get('description', '')
+                caption = item_data.get('caption', '')
+                transcript = item_data.get('transcript', '')
+                views = item.get('views')
+                likes = item.get('likes')
+                comments = item.get('comments')
+                shares = None
+                saves = None
+                followers = None
+                duration = item_data.get('video_duration')
+                source_url = item.get('url') or competitor.url
+            elif platform == 'tiktok':
+                title = f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                description = item.get('desc', '')
+                caption = ''
+                transcript = ''
+                views = item.get('views')
+                likes = item.get('likes')
+                comments = item.get('comments')
+                shares = item.get('shares')
+                saves = item.get('saves')
+                followers = item.get('author_followers')
+                duration = item.get('duration')
+                source_url = item.get('url') or competitor.url
+            elif platform == 'youtube':
+                title = item.get('title', '') or f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                description = item.get('description', '')
+                caption = ''
+                transcript = ''
+                views = item.get('views')
+                likes = item.get('likes')
+                comments = item.get('comments')
+                shares = None
+                saves = None
+                followers = None
+                duration = item.get('duration')
+                source_url = item.get('url') or competitor.url
+            else:
+                title = item.get('title', '') or f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                description = item.get('description', '')
+                caption = ''
+                transcript = ''
+                views = None
+                likes = item.get('likes')
+                comments = item.get('comments')
+                shares = None
+                saves = None
+                followers = None
+                duration = None
+                source_url = item.get('url') or competitor.url
+
+            post = Post.objects.create(
+                workspace=competitor.workspace,
+                title=title,
+                source_url=source_url,
+                platform=platform,
+                status='new',
+                original_text=_normalize_text(transcript),
+                description=_choose_original_text(description, caption, transcript),
+                transcript=_normalize_text(transcript),
+                views_count=views,
+                likes_count=likes,
+                comments_count=comments,
+                shares_count=shares,
+                engagement_rate=None,
+                video_duration=duration,
+                published_at=None,
+                play_count=None,
+                saves_count=saves,
+                author_followers=followers,
+                has_audio=platform in ('instagram', 'tiktok', 'youtube'),
+                is_video=platform in ('instagram', 'tiktok', 'youtube'),
+            )
+            created_post_ids.append(post.id)
+        return created_post_ids
+
+    post = Post.objects.create(
+        workspace=competitor.workspace,
+        title=f"{competitor.platform.upper()} - @{competitor.username}",
+        source_url=competitor.url,
+        platform=competitor.platform,
+        status='new',
+        original_text=_normalize_text(scraped_data.get('transcript', '')),
+        description=_choose_original_text(
+            scraped_data.get('description', ''),
+            scraped_data.get('caption', ''),
+            scraped_data.get('transcript', ''),
+        ),
+        transcript=_normalize_text(scraped_data.get('transcript', '')),
+        views_count=scraped_data.get('views_count'),
+        likes_count=scraped_data.get('likes_count'),
+        comments_count=scraped_data.get('comments_count'),
+        shares_count=scraped_data.get('shares_count'),
+        engagement_rate=scraped_data.get('engagement_rate'),
+        video_duration=scraped_data.get('video_duration'),
+        published_at=scraped_data.get('published_at'),
+        play_count=scraped_data.get('play_count'),
+        saves_count=scraped_data.get('saves_count'),
+        author_followers=scraped_data.get('author_followers'),
+        has_audio=scraped_data.get('has_audio', False),
+        is_video=scraped_data.get('is_video', False),
+    )
+    return [post.id]
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -367,40 +485,18 @@ def scrape_competitor_posts():
         try:
             logger.info(f"Scraping posts for {competitor.platform} @{competitor.username}")
             
-            scraped_data = scrape_content(competitor.url)
-            
-            post = Post.objects.create(
-                workspace=competitor.workspace,
-                title=f"{competitor.platform.upper()} - @{competitor.username}",
-                source_url=competitor.url,
-                platform=competitor.platform,
-                status='new',
-                original_text=_normalize_text(scraped_data.get('transcript', '')),
-                description=_choose_original_text(
-                    scraped_data.get('description', ''),
-                    scraped_data.get('caption', ''),
-                    scraped_data.get('transcript', ''),
-                ),
-                transcript=_normalize_text(scraped_data.get('transcript', '')),
-                views_count=scraped_data.get('views_count'),
-                likes_count=scraped_data.get('likes_count'),
-                comments_count=scraped_data.get('comments_count'),
-                shares_count=scraped_data.get('shares_count'),
-                engagement_rate=scraped_data.get('engagement_rate'),
-                video_duration=scraped_data.get('video_duration'),
-                published_at=scraped_data.get('published_at'),
-                play_count=scraped_data.get('play_count'),
-                saves_count=scraped_data.get('saves_count'),
-                author_followers=scraped_data.get('author_followers'),
-                has_audio=scraped_data.get('has_audio', False),
-                is_video=scraped_data.get('is_video', False),
+            scraped_data = scrape_content(competitor.url, max_items=settings.max_parse_depth)
+            post_ids = _create_posts_from_competitor_scrape(
+                competitor=competitor,
+                scraped_data=scraped_data,
+                max_items=settings.max_parse_depth,
             )
             
             competitor.last_scraped_at = timezone.now()
             competitor.save(update_fields=['last_scraped_at'])
             
-            created_posts.append(post.id)
-            logger.info(f"Created post #{post.id} from {competitor.username}")
+            created_posts.extend(post_ids)
+            logger.info(f"Created {len(post_ids)} post(s) from {competitor.username}")
             
         except Exception as e:
             error_msg = f"Failed to scrape {competitor.username}: {str(e)}"
@@ -422,7 +518,7 @@ def scrape_single_competitor(competitor_id: int):
     Парсит посты одного конкурента по ID.
     Используется для ручного запуска.
     """
-    from .models import CompetitorAccount
+    from .models import CompetitorAccount, SystemSettings
     from django.utils import timezone
     
     try:
@@ -438,40 +534,19 @@ def scrape_single_competitor(competitor_id: int):
     try:
         logger.info(f"Scraping posts for {competitor.platform} @{competitor.username}")
         
-        scraped_data = scrape_content(competitor.url)
-        
-        post = Post.objects.create(
-            workspace=competitor.workspace,
-            title=f"{competitor.platform.upper()} - @{competitor.username}",
-            source_url=competitor.url,
-            platform=competitor.platform,
-            status='new',
-            original_text=_normalize_text(scraped_data.get('transcript', '')),
-            description=_choose_original_text(
-                scraped_data.get('description', ''),
-                scraped_data.get('caption', ''),
-                scraped_data.get('transcript', ''),
-            ),
-            transcript=_normalize_text(scraped_data.get('transcript', '')),
-            views_count=scraped_data.get('views_count'),
-            likes_count=scraped_data.get('likes_count'),
-            comments_count=scraped_data.get('comments_count'),
-            shares_count=scraped_data.get('shares_count'),
-            engagement_rate=scraped_data.get('engagement_rate'),
-            video_duration=scraped_data.get('video_duration'),
-            published_at=scraped_data.get('published_at'),
-            play_count=scraped_data.get('play_count'),
-            saves_count=scraped_data.get('saves_count'),
-            author_followers=scraped_data.get('author_followers'),
-            has_audio=scraped_data.get('has_audio', False),
-            is_video=scraped_data.get('is_video', False),
+        settings = SystemSettings.get_settings()
+        scraped_data = scrape_content(competitor.url, max_items=settings.max_parse_depth)
+        post_ids = _create_posts_from_competitor_scrape(
+            competitor=competitor,
+            scraped_data=scraped_data,
+            max_items=settings.max_parse_depth,
         )
         
         competitor.last_scraped_at = timezone.now()
         competitor.save(update_fields=['last_scraped_at'])
         
-        logger.info(f"Created post #{post.id} from {competitor.username}")
-        return post.id
+        logger.info(f"Created {len(post_ids)} post(s) from {competitor.username}")
+        return post_ids[0] if post_ids else None
         
     except Exception as e:
         logger.error(f"Failed to scrape {competitor.username}: {e}", exc_info=True)
