@@ -42,15 +42,6 @@ const MIN_WIDTHS: ColumnWidths = {
   actions: 70,
 };
 
-const getStatusMeta = (status: string) => {
-  switch (status) {
-    case "new": return { icon: "[N]", label: "New", className: "bg-sky-500/20 text-sky-200 border border-sky-400/40" };
-    case "in_progress": return { icon: "[~]", label: "In Progress", className: "bg-amber-500/20 text-amber-200 border border-amber-400/40" };
-    case "ready": return { icon: "[OK]", label: "Ready", className: "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40" };
-    case "error": return { icon: "[X]", label: "Error", className: "bg-rose-500/20 text-rose-200 border border-rose-400/40" };
-    default: return { icon: "[?]", label: "Status", className: "bg-gray-700 text-gray-200 border border-gray-500/40" };
-  }
-};
 
 export default function PostsList({
   filteredPosts,
@@ -232,16 +223,14 @@ export default function PostsList({
             <span className="inline-flex items-center gap-1">{post.platform === 'instagram' ? '📸' : post.platform === 'tiktok' ? '🎵' : post.platform === 'linkedin' ? '💼' : '📺'} {post.platform || 'Instagram'}</span>
           </div>
         );
-      case "status": {
-        const statusMeta = getStatusMeta(post.status || "");
+      case "status":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
-            <span className={`inline-flex items-center justify-center px-2 py-1 rounded text-xs font-semibold ${statusMeta.className}`} title={statusMeta.label}>
-              {statusMeta.icon}
+            <span className={`px-2 py-1 rounded text-xs font-semibold ${post.status === 'new' ? 'bg-gray-700' : post.status === 'in_progress' ? 'bg-gray-700' : post.status === 'ready' ? 'bg-gray-700' : 'bg-gray-700'}`}>
+              {post.status === 'new' ? '🆕' : post.status === 'in_progress' ? '⚡' : post.status === 'ready' ? '✅' : '❌'}
             </span>
           </div>
         );
-      }
       case "actions":
         return (
           <div key={key} className="flex items-center gap-1 flex-shrink-0 px-2" style={{ width: getColumnWidth(key) }} onClick={(e) => e.stopPropagation()}>
@@ -290,13 +279,15 @@ export default function PostsList({
                 </div>
                 
                 {/* Status Badge */}
-                <span className={`ml-2 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider flex-shrink-0 ${
-                  post.status === 'new' ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40' : 
-                  post.status === 'in_progress' ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40 animate-pulse' : 
-                  post.status === 'ready' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40' : 
-                  'bg-rose-500/20 text-rose-200 border border-rose-400/40'
+                <span className={`ml-2 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0 ${
+                  post.status === 'new' ? 'bg-gray-700 text-gray-300' : 
+                  post.status === 'in_progress' ? 'bg-blue-600/20 text-blue-400 animate-pulse' : 
+                  post.status === 'ready' ? 'bg-emerald-600/20 text-emerald-400' : 
+                  'bg-red-600/20 text-red-400'
                 }`}>
-                  {post.status === 'new' ? '[N] New' : post.status === 'in_progress' ? '[~] In Progress' : post.status === 'ready' ? '[OK] Ready' : '[X] Error'}
+                  {post.status === 'new' ? 'Новый' : 
+                   post.status === 'in_progress' ? 'В работе' : 
+                   post.status === 'ready' ? 'Готов' : 'Ошибка'}
                 </span>
               </div>
 
