@@ -29,7 +29,7 @@ const DEFAULT_COLUMN_ORDER = [
 ];
 const METRIC_FILTER_COLUMNS = ["views", "likes", "comments", "er", "plays", "saves", "followers"] as const;
 type MetricFilterKey = (typeof METRIC_FILTER_COLUMNS)[number];
-type MetricFilterRange = { min: string; max: string };
+type MetricFilter = { key: MetricFilterKey; op: "gt" | "lt"; value: string };
 
 export default function AppPage() {
   const router = useRouter();
@@ -64,8 +64,7 @@ export default function AppPage() {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [minER, setMinER] = useState<string>("");
-  const [metricFilters, setMetricFilters] = useState<Record<string, MetricFilterRange>>({});
-  const [activeMetricFilterKey, setActiveMetricFilterKey] = useState<MetricFilterKey | null>(null);
+  const [metricFilter, setMetricFilter] = useState<MetricFilter | null>(null);
 
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -360,22 +359,23 @@ export default function AppPage() {
   const handleMetricHeaderClick = (key: string) => {
     if (!METRIC_FILTER_COLUMNS.includes(key as MetricFilterKey)) return;
     const metricKey = key as MetricFilterKey;
-    setActiveMetricFilterKey((prev) => (prev === metricKey ? null : metricKey));
-    setMetricFilters((prev) => ({
-      ...prev,
-      [metricKey]: prev[metricKey] || { min: "", max: "" },
-    }));
+    setMetricFilter((prev) =>
+      prev && prev.key === metricKey
+        ? null
+        : { key: metricKey, op: "gt", value: prev?.key === metricKey ? prev.value : "" }
+    );
   };
 
-  const setMetricFilterValue = (key: MetricFilterKey, field: "min" | "max", value: string) => {
-    setMetricFilters((prev) => ({
-      ...prev,
-      [key]: { ...(prev[key] || { min: "", max: "" }), [field]: value },
-    }));
+  const setMetricFilterValue = (value: string) => {
+    setMetricFilter((prev) => (prev ? { ...prev, value } : prev));
   };
 
-  const clearMetricFilter = (key: MetricFilterKey) => {
-    setMetricFilters((prev) => ({ ...prev, [key]: { min: "", max: "" } }));
+  const setMetricFilterOp = (op: "gt" | "lt") => {
+    setMetricFilter((prev) => (prev ? { ...prev, op } : prev));
+  };
+
+  const clearMetricFilter = () => {
+    setMetricFilter((prev) => (prev ? { ...prev, value: "" } : prev));
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -390,23 +390,14 @@ export default function AppPage() {
         if (er < minErNum) return false;
       }
     }
-    for (const key of METRIC_FILTER_COLUMNS) {
-      const range = metricFilters[key];
-      if (!range) continue;
-      const hasMin = range.min !== "";
-      const hasMax = range.max !== "";
-      if (!hasMin && !hasMax) continue;
+    if (metricFilter && metricFilter.value !== "") {
+      const targetValue = getMetricValue(post, metricFilter.key);
+      if (targetValue == null || Number.isNaN(targetValue)) return false;
 
-      const value = getMetricValue(post, key);
-      if (value == null || Number.isNaN(value)) return false;
-
-      if (hasMin) {
-        const minValue = parseFloat(range.min);
-        if (!Number.isNaN(minValue) && value < minValue) return false;
-      }
-      if (hasMax) {
-        const maxValue = parseFloat(range.max);
-        if (!Number.isNaN(maxValue) && value > maxValue) return false;
+      const filterValue = parseFloat(metricFilter.value);
+      if (!Number.isNaN(filterValue)) {
+        if (metricFilter.op === "gt" && !(targetValue > filterValue)) return false;
+        if (metricFilter.op === "lt" && !(targetValue < filterValue)) return false;
       }
     }
     return true;
@@ -505,35 +496,36 @@ export default function AppPage() {
 
           <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} />
 
-          {activeMetricFilterKey && (
+          {metricFilter && (
             <div className="mb-4 p-3 bg-slate-900/70 border border-sky-500/30 rounded-lg flex flex-wrap items-end gap-3">
               <div className="text-xs text-sky-200 font-semibold min-w-[140px]">
-                Фильтр: {columnLabels[activeMetricFilterKey] || activeMetricFilterKey}
+                Фильтр: {columnLabels[metricFilter.key] || metricFilter.key}
               </div>
               <div className="flex flex-col">
-                <label className="text-[11px] text-gray-400 mb-1">От</label>
+                <label className="text-[11px] text-gray-400 mb-1">Условие</label>
+                <select
+                  value={metricFilter.op}
+                  onChange={(e) => setMetricFilterOp(e.target.value as "gt" | "lt")}
+                  className="w-28 px-2 py-1.5 text-xs bg-gray-800/70 border border-gray-600 rounded focus:outline-none focus:border-sky-400"
+                >
+                  <option value="gt">&gt; (больше)</option>
+                  <option value="lt">&lt; (меньше)</option>
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[11px] text-gray-400 mb-1">Значение</label>
                 <input
                   type="number"
-                  step={activeMetricFilterKey === "er" ? "0.1" : "1"}
-                  value={metricFilters[activeMetricFilterKey]?.min || ""}
-                  onChange={(e) => setMetricFilterValue(activeMetricFilterKey, "min", e.target.value)}
+                  step={metricFilter.key === "er" ? "0.1" : "1"}
+                  value={metricFilter.value}
+                  onChange={(e) => setMetricFilterValue(e.target.value)}
                   className="w-28 px-2 py-1.5 text-xs bg-gray-800/70 border border-gray-600 rounded focus:outline-none focus:border-sky-400"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-[11px] text-gray-400 mb-1">До</label>
-                <input
-                  type="number"
-                  step={activeMetricFilterKey === "er" ? "0.1" : "1"}
-                  value={metricFilters[activeMetricFilterKey]?.max || ""}
-                  onChange={(e) => setMetricFilterValue(activeMetricFilterKey, "max", e.target.value)}
-                  className="w-28 px-2 py-1.5 text-xs bg-gray-800/70 border border-gray-600 rounded focus:outline-none focus:border-sky-400"
-                />
-              </div>
-              <button onClick={() => clearMetricFilter(activeMetricFilterKey)} className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded">
+              <button onClick={() => clearMetricFilter()} className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded">
                 Сбросить
               </button>
-              <button onClick={() => setActiveMetricFilterKey(null)} className="px-3 py-1.5 text-xs bg-sky-700/70 hover:bg-sky-600/70 rounded">
+              <button onClick={() => setMetricFilter(null)} className="px-3 py-1.5 text-xs bg-sky-700/70 hover:bg-sky-600/70 rounded">
                 Закрыть
               </button>
             </div>
@@ -546,17 +538,17 @@ export default function AppPage() {
               <p className="text-base sm:text-lg lg:text-xl 2xl:text-2xl text-gray-400 mb-6 lg:mb-8">
                 {posts.length === 0
                   ? "Постов пока нет. Создайте первый!"
-                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Object.values(metricFilters).some((x) => x.min || x.max)
+                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Boolean(metricFilter?.value)
                   ? "Ничего не найдено по фильтрам. Попробуйте изменить параметры."
                   : "Ничего не найдено."}
               </p>
               {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">Создать пост</button>}
-              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Object.values(metricFilters).some((x) => x.min || x.max)) && (
-                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricFilters({}); setActiveMetricFilterKey(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">Сбросить фильтры</button>
+              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Boolean(metricFilter?.value)) && (
+                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricFilter(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">Сбросить фильтры</button>
               )}
             </div>
           ) : (
-            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} activeMetricFilterKey={activeMetricFilterKey} metricFilters={metricFilters} onMetricHeaderClick={handleMetricHeaderClick} />
+            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} activeMetricFilterKey={metricFilter?.key ?? null} metricFilterValue={metricFilter?.value ?? ""} onMetricHeaderClick={handleMetricHeaderClick} />
           )}
 
           {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} onEdit={() => { setEditingPost(selectedPost); setEditOpen(true); setSelectedPost(null); }} formatNumber={formatNumber} accessToken={accessToken} />}

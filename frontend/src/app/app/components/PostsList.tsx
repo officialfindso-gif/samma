@@ -58,7 +58,7 @@ export default function PostsList({
   handleDelete,
   formatNumber,
   activeMetricFilterKey,
-  metricFilters,
+  metricFilterValue,
   onMetricHeaderClick,
 }: {
   filteredPosts: Post[];
@@ -74,7 +74,7 @@ export default function PostsList({
   handleDelete: (id: number) => Promise<void> | void;
   formatNumber: (n: number) => string;
   activeMetricFilterKey: string | null;
-  metricFilters: Record<string, { min: string; max: string }>;
+  metricFilterValue: string;
   onMetricHeaderClick: (columnKey: string) => void;
 }) {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_WIDTHS);
@@ -142,7 +142,7 @@ export default function PostsList({
   const renderHeaderCell = (key: string) => {
     if (!visibleColumns[key]) return null;
     const isMetric = METRIC_FILTER_COLUMNS.has(key);
-    const hasMetricFilter = Boolean(metricFilters[key]?.min || metricFilters[key]?.max);
+    const hasMetricFilter = Boolean(activeMetricFilterKey === key && metricFilterValue !== "");
     const isMetricActive = activeMetricFilterKey === key;
     return (
       <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
