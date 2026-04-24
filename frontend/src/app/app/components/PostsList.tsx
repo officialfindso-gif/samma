@@ -82,8 +82,14 @@ export default function PostsList({
   const [tempWidth, setTempWidth] = useState<number>(0);
   const [startX, setStartX] = useState<number>(0);
   const [startWidth, setStartWidth] = useState<number>(0);
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+  const [tableContentWidth, setTableContentWidth] = useState(0);
 
   const rafRef = useRef<number | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableContentRef = useRef<HTMLDivElement | null>(null);
+  const floatingScrollRef = useRef<HTMLDivElement | null>(null);
+  const syncLockRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -131,6 +137,62 @@ export default function PostsList({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [resizingColumn, startX, startWidth, tempWidth, columnWidths]);
+
+  useEffect(() => {
+    const tableScroll = tableScrollRef.current;
+    const tableContent = tableContentRef.current;
+    if (!tableScroll || !tableContent) return;
+
+    const updateMetrics = () => {
+      const contentWidth = tableContent.scrollWidth;
+      const viewportWidth = tableScroll.clientWidth;
+      setTableContentWidth(contentWidth);
+      setHasHorizontalOverflow(contentWidth > viewportWidth + 1);
+    };
+
+    updateMetrics();
+    const ro = new ResizeObserver(updateMetrics);
+    ro.observe(tableScroll);
+    ro.observe(tableContent);
+    window.addEventListener("resize", updateMetrics);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateMetrics);
+    };
+  }, [columnWidths, visibleColumns, columnOrder, filteredPosts.length]);
+
+  useEffect(() => {
+    const tableScroll = tableScrollRef.current;
+    const floatingScroll = floatingScrollRef.current;
+    if (!tableScroll || !floatingScroll) return;
+
+    const syncFromTable = () => {
+      if (syncLockRef.current) return;
+      syncLockRef.current = true;
+      floatingScroll.scrollLeft = tableScroll.scrollLeft;
+      requestAnimationFrame(() => {
+        syncLockRef.current = false;
+      });
+    };
+
+    const syncFromFloating = () => {
+      if (syncLockRef.current) return;
+      syncLockRef.current = true;
+      tableScroll.scrollLeft = floatingScroll.scrollLeft;
+      requestAnimationFrame(() => {
+        syncLockRef.current = false;
+      });
+    };
+
+    tableScroll.addEventListener("scroll", syncFromTable, { passive: true });
+    floatingScroll.addEventListener("scroll", syncFromFloating, { passive: true });
+
+    return () => {
+      tableScroll.removeEventListener("scroll", syncFromTable);
+      floatingScroll.removeEventListener("scroll", syncFromFloating);
+    };
+  }, [hasHorizontalOverflow]);
 
   const getColumnWidth = (columnKey: string): number => {
     if (columnKey === "checkbox") return DEFAULT_WIDTHS.checkbox;
@@ -369,7 +431,8 @@ export default function PostsList({
 
       {/* Десктопное отображение таблицей */}
       <div className="hidden md:block w-full bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-xl border border-gray-700/30 shadow-2xl backdrop-blur-sm ring-1 ring-gray-700/20 overflow-hidden">
-        <div className="overflow-x-auto posts-table-container" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
+        <div ref={tableScrollRef} className="overflow-x-auto posts-table-container" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
+          <div ref={tableContentRef} className="w-max">
           {/* Table Header */}
           <div className="flex items-center px-2 lg:px-4 py-2 lg:py-3 bg-gradient-to-r from-gray-800/70 to-gray-700/50 border-b border-gray-600/30 text-xs lg:text-sm font-semibold text-gray-300 uppercase tracking-wider backdrop-blur-sm w-max">
             <div className="flex items-center justify-center flex-shrink-0 border-r border-gray-600/20" style={{ width: getColumnWidth("checkbox") }}>
@@ -394,8 +457,18 @@ export default function PostsList({
               );
             })}
           </div>
+          </div>
         </div>
       </div>
+      {hasHorizontalOverflow && (
+        <div className="hidden md:block sticky bottom-2 z-20 mt-2 pointer-events-none">
+          <div className="mx-2 lg:mx-4 bg-gray-900/80 border border-gray-700/40 rounded-md p-1 pointer-events-auto">
+            <div ref={floatingScrollRef} className="overflow-x-auto">
+              <div style={{ width: tableContentWidth, height: 1 }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
