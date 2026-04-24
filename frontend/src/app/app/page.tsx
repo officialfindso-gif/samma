@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, FormEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -27,9 +27,9 @@ import { formatNumber } from "@/lib/utils";
 const DEFAULT_COLUMN_ORDER = [
   "source", "original", "result", "description", "views", "likes", "comments", "er", "plays", "saves", "followers", "platform", "status", "actions",
 ];
-const METRIC_FILTER_COLUMNS = ["views", "likes", "comments", "er", "plays", "saves", "followers"] as const;
-type MetricFilterKey = (typeof METRIC_FILTER_COLUMNS)[number];
-type MetricFilter = { key: MetricFilterKey; op: "gt" | "lt"; value: string };
+const METRIC_SORT_COLUMNS = ["views", "likes", "comments", "er", "plays", "saves", "followers"] as const;
+type MetricKey = (typeof METRIC_SORT_COLUMNS)[number];
+type MetricSort = { key: MetricKey; order: "asc" | "desc" };
 
 export default function AppPage() {
   const router = useRouter();
@@ -64,7 +64,7 @@ export default function AppPage() {
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [minER, setMinER] = useState<string>("");
-  const [metricFilter, setMetricFilter] = useState<MetricFilter | null>(null);
+  const [metricSort, setMetricSort] = useState<MetricSort | null>(null);
 
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -84,20 +84,20 @@ export default function AppPage() {
   const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
 
   const columnLabels: Record<string, string> = {
-    source: "Источник",
-    original: "Оригинал",
-    result: "Результат",
-    description: "Описание",
-    views: "Просмотры",
-    likes: "Лайки",
-    comments: "Комментарии",
+    source: "РСЃС‚РѕС‡РЅРёРє",
+    original: "РћСЂРёРіРёРЅР°Р»",
+    result: "Р РµР·СѓР»СЊС‚Р°С‚",
+    description: "РћРїРёСЃР°РЅРёРµ",
+    views: "РџСЂРѕСЃРјРѕС‚СЂС‹",
+    likes: "Р›Р°Р№РєРё",
+    comments: "РљРѕРјРјРµРЅС‚Р°СЂРёРё",
     er: "ER%",
-    plays: "Воспроизведения",
-    saves: "Сохранения",
-    followers: "Подписчики",
-    platform: "Платформа",
-    status: "Статус",
-    actions: "Действия",
+    plays: "Р’РѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёСЏ",
+    saves: "РЎРѕС…СЂР°РЅРµРЅРёСЏ",
+    followers: "РџРѕРґРїРёСЃС‡РёРєРё",
+    platform: "РџР»Р°С‚С„РѕСЂРјР°",
+    status: "РЎС‚Р°С‚СѓСЃ",
+    actions: "Р”РµР№СЃС‚РІРёСЏ",
   };
 
   useEffect(() => {
@@ -105,10 +105,10 @@ export default function AppPage() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Мерджим с дефолтом — новые колонки появятся, старые сохранятся
+        // РњРµСЂРґР¶РёРј СЃ РґРµС„РѕР»С‚РѕРј вЂ” РЅРѕРІС‹Рµ РєРѕР»РѕРЅРєРё РїРѕСЏРІСЏС‚СЃСЏ, СЃС‚Р°СЂС‹Рµ СЃРѕС…СЂР°РЅСЏС‚СЃСЏ
         setVisibleColumns((prev) => ({ ...prev, ...parsed }));
       } catch {
-        // Если ошибка парсинга — оставляем дефолт
+        // Р•СЃР»Рё РѕС€РёР±РєР° РїР°СЂСЃРёРЅРіР° вЂ” РѕСЃС‚Р°РІР»СЏРµРј РґРµС„РѕР»С‚
       }
     }
     // Load saved column order
@@ -183,7 +183,7 @@ export default function AppPage() {
     }
     setAccessToken(token);
 
-    // Проверяем, показывали ли уже онбординг
+    // РџСЂРѕРІРµСЂСЏРµРј, РїРѕРєР°Р·С‹РІР°Р»Рё Р»Рё СѓР¶Рµ РѕРЅР±РѕСЂРґРёРЅРі
     const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
     if (!hasSeenOnboarding) {
       setShowOnboarding(true);
@@ -193,13 +193,13 @@ export default function AppPage() {
   useEffect(() => {
     if (!accessToken) return;
     
-    // Загружаем информацию о пользователе
+    // Р—Р°РіСЂСѓР¶Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРѕР»СЊР·РѕРІР°С‚РµР»Рµ
     handleApiCall(() => getCurrentUser(accessToken))
         .then((user) => {
         setIsStaff(!!(user.is_staff || user.is_superuser));
       })
       .catch((err) => {
-        console.error("Ошибка загрузки пользователя:", err);
+        console.error("РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:", err);
       });
     
     setLoading(true);
@@ -211,7 +211,7 @@ export default function AppPage() {
       })
       .catch((err) => {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Не удалось загрузить воркспейсы");
+        setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РІРѕСЂРєСЃРїРµР№СЃС‹");
       })
       .finally(() => setLoading(false));
   }, [accessToken, handleApiCall]);
@@ -220,12 +220,12 @@ export default function AppPage() {
     if (!accessToken || !activeWorkspaceId) return;
     setLoadingPosts(true);
     setError(null);
-    // Не отправляем min_er на сервер — фильтруем только на клиенте
+    // РќРµ РѕС‚РїСЂР°РІР»СЏРµРј min_er РЅР° СЃРµСЂРІРµСЂ вЂ” С„РёР»СЊС‚СЂСѓРµРј С‚РѕР»СЊРєРѕ РЅР° РєР»РёРµРЅС‚Рµ
     handleApiCall(() => getPosts(accessToken, activeWorkspaceId, { sort: sortBy, ordering: sortOrder }))
       .then((data) => setPosts(data))
       .catch((err) => {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Не удалось загрузить посты");
+        setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїРѕСЃС‚С‹");
       })
       .finally(() => setLoadingPosts(false));
   }, [accessToken, activeWorkspaceId, sortBy, sortOrder, minER, handleApiCall]);
@@ -243,7 +243,7 @@ export default function AppPage() {
           if (updated && updated.status !== selectedPost.status) setSelectedPost(updated);
         }
       } catch (err) {
-        console.error("Ошибка автообновления:", err);
+        console.error("РћС€РёР±РєР° Р°РІС‚РѕРѕР±РЅРѕРІР»РµРЅРёСЏ:", err);
       }
     }, 3000);
     return () => clearInterval(interval);
@@ -262,7 +262,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ошибка запуска обработки");
+      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РѕР±СЂР°Р±РѕС‚РєРё");
     }
   };
 
@@ -282,13 +282,13 @@ export default function AppPage() {
       setSelectedPosts(new Set());
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ошибка массовой обработки");
+      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕР№ РѕР±СЂР°Р±РѕС‚РєРё");
     }
   };
 
   const handleDelete = async (postId: number) => {
     if (!accessToken) return;
-    if (!confirm("Вы уверены, что хотите удалить этот пост? Это действие нельзя отменить.")) return;
+    if (!confirm("Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚РѕС‚ РїРѕСЃС‚? Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.")) return;
     try {
       setError(null);
       await handleApiCall(() => deletePost(accessToken!, postId));
@@ -299,7 +299,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ошибка удаления поста");
+      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ РїРѕСЃС‚Р°");
     }
   };
 
@@ -312,7 +312,7 @@ export default function AppPage() {
 
   const handleBulkDelete = async () => {
     if (!accessToken || selectedPosts.size === 0) return;
-    if (!confirm(`Вы уверены, что хотите удалить ${selectedPosts.size} постов? Это действие нельзя отменить.`)) return;
+    if (!confirm(`Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ ${selectedPosts.size} РїРѕСЃС‚РѕРІ? Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.`)) return;
     try {
       setError(null);
       for (const postId of Array.from(selectedPosts)) {
@@ -327,11 +327,11 @@ export default function AppPage() {
       setSelectedPosts(new Set());
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ошибка массового удаления");
+      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕРіРѕ СѓРґР°Р»РµРЅРёСЏ");
     }
   };
 
-  const getMetricValue = (post: Post, key: MetricFilterKey): number | null => {
+  const getMetricValue = (post: Post, key: MetricKey): number | null => {
     switch (key) {
       case "views":
         return post.views_count ?? null;
@@ -357,32 +357,21 @@ export default function AppPage() {
   };
 
   const handleMetricHeaderClick = (key: string) => {
-    if (!METRIC_FILTER_COLUMNS.includes(key as MetricFilterKey)) return;
-    const metricKey = key as MetricFilterKey;
-    setMetricFilter((prev) =>
-      prev && prev.key === metricKey
-        ? null
-        : { key: metricKey, op: "gt", value: prev?.key === metricKey ? prev.value : "" }
-    );
-  };
-
-  const setMetricFilterValue = (value: string) => {
-    setMetricFilter((prev) => (prev ? { ...prev, value } : prev));
-  };
-
-  const setMetricFilterOp = (op: "gt" | "lt") => {
-    setMetricFilter((prev) => (prev ? { ...prev, op } : prev));
-  };
-
-  const clearMetricFilter = () => {
-    setMetricFilter((prev) => (prev ? { ...prev, value: "" } : prev));
+    if (!METRIC_SORT_COLUMNS.includes(key as MetricKey)) return;
+    const metricKey = key as MetricKey;
+    setMetricSort((prev) => {
+      if (prev && prev.key === metricKey) {
+        return { key: metricKey, order: prev.order === "desc" ? "asc" : "desc" };
+      }
+      return { key: metricKey, order: "desc" };
+    });
   };
 
   const filteredPosts = posts.filter((post) => {
     if (filterStatus !== "all" && post.status !== filterStatus) return false;
     if (filterPlatform !== "all" && post.platform !== filterPlatform) return false;
     if (searchQuery && !((post.title || "").toLowerCase().includes(searchQuery.toLowerCase()) || (post.original_text || "").toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-    // Фильтр по минимальному Engagement Rate
+    // Р¤РёР»СЊС‚СЂ РїРѕ РјРёРЅРёРјР°Р»СЊРЅРѕРјСѓ Engagement Rate
     if (minER) {
       const minErNum = parseFloat(minER);
       if (!isNaN(minErNum) && post.engagement_rate != null) {
@@ -390,18 +379,19 @@ export default function AppPage() {
         if (er < minErNum) return false;
       }
     }
-    if (metricFilter && metricFilter.value !== "") {
-      const targetValue = getMetricValue(post, metricFilter.key);
-      if (targetValue == null || Number.isNaN(targetValue)) return false;
-
-      const filterValue = parseFloat(metricFilter.value);
-      if (!Number.isNaN(filterValue)) {
-        if (metricFilter.op === "gt" && !(targetValue > filterValue)) return false;
-        if (metricFilter.op === "lt" && !(targetValue < filterValue)) return false;
-      }
-    }
     return true;
   });
+
+  const sortedPosts = metricSort
+    ? [...filteredPosts].sort((a, b) => {
+        const aValue = getMetricValue(a, metricSort.key);
+        const bValue = getMetricValue(b, metricSort.key);
+        if (aValue == null && bValue == null) return 0;
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
+        return metricSort.order === "asc" ? aValue - bValue : bValue - aValue;
+      })
+    : filteredPosts;
 
   const togglePostSelection = (postId: number) => {
     const newSelected = new Set(selectedPosts);
@@ -410,7 +400,7 @@ export default function AppPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedPosts.size === filteredPosts.length) setSelectedPosts(new Set()); else setSelectedPosts(new Set(filteredPosts.map((p) => p.id)));
+    if (selectedPosts.size === sortedPosts.length) setSelectedPosts(new Set()); else setSelectedPosts(new Set(sortedPosts.map((p) => p.id)));
   };
 
   const handleProcessAll = async () => {
@@ -418,7 +408,7 @@ export default function AppPage() {
     const newPosts = posts.filter((p) => p.status === "new");
     if (newPosts.length === 0) return;
     
-    if (!confirm(`Обработать все новые посты (${newPosts.length} шт.)?`)) return;
+    if (!confirm(`РћР±СЂР°Р±РѕС‚Р°С‚СЊ РІСЃРµ РЅРѕРІС‹Рµ РїРѕСЃС‚С‹ (${newPosts.length} С€С‚.)?`)) return;
     
     try {
       setError(null);
@@ -432,7 +422,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ошибка массовой обработки");
+      setError(err instanceof Error ? err.message : "РћС€РёР±РєР° РјР°СЃСЃРѕРІРѕР№ РѕР±СЂР°Р±РѕС‚РєРё");
     }
   };
 
@@ -449,7 +439,7 @@ export default function AppPage() {
   const handleCreateSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!accessToken || !activeWorkspaceId) {
-      setError("Выбери воркспейс перед созданием поста.");
+      setError("Р’С‹Р±РµСЂРё РІРѕСЂРєСЃРїРµР№СЃ РїРµСЂРµРґ СЃРѕР·РґР°РЅРёРµРј РїРѕСЃС‚Р°.");
       return;
     }
     try {
@@ -467,7 +457,7 @@ export default function AppPage() {
       setCreateTitle(""); setCreateSourceUrl(""); setCreateOriginalText(""); setCreateOpen(false);
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Не удалось создать пост");
+      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РїРѕСЃС‚");
     } finally { setCreateLoading(false); }
   };
 
@@ -496,59 +486,24 @@ export default function AppPage() {
 
           <FiltersBar postsExist={filteredPosts.length > 0 || posts.length > 0} searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterPlatform={filterPlatform} setFilterPlatform={setFilterPlatform} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} minER={minER} setMinER={setMinER} columnSettingsOpen={columnSettingsOpen} setColumnSettingsOpen={setColumnSettingsOpen} visibleColumns={visibleColumns} toggleColumn={toggleColumn} columnOrder={columnOrder} moveColumn={moveColumn} columnLabels={columnLabels} selectedCount={selectedPosts.size} handleBulkProcess={handleBulkProcess} handleBulkDelete={handleBulkDelete} />
 
-          {metricFilter && (
-            <div className="mb-4 p-3 bg-slate-900/70 border border-sky-500/30 rounded-lg flex flex-wrap items-end gap-3">
-              <div className="text-xs text-sky-200 font-semibold min-w-[140px]">
-                Фильтр: {columnLabels[metricFilter.key] || metricFilter.key}
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[11px] text-gray-400 mb-1">Условие</label>
-                <select
-                  value={metricFilter.op}
-                  onChange={(e) => setMetricFilterOp(e.target.value as "gt" | "lt")}
-                  className="w-28 px-2 py-1.5 text-xs bg-gray-800/70 border border-gray-600 rounded focus:outline-none focus:border-sky-400"
-                >
-                  <option value="gt">&gt; (больше)</option>
-                  <option value="lt">&lt; (меньше)</option>
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[11px] text-gray-400 mb-1">Значение</label>
-                <input
-                  type="number"
-                  step={metricFilter.key === "er" ? "0.1" : "1"}
-                  value={metricFilter.value}
-                  onChange={(e) => setMetricFilterValue(e.target.value)}
-                  className="w-28 px-2 py-1.5 text-xs bg-gray-800/70 border border-gray-600 rounded focus:outline-none focus:border-sky-400"
-                />
-              </div>
-              <button onClick={() => clearMetricFilter()} className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded">
-                Сбросить
-              </button>
-              <button onClick={() => setMetricFilter(null)} className="px-3 py-1.5 text-xs bg-sky-700/70 hover:bg-sky-600/70 rounded">
-                Закрыть
-              </button>
-            </div>
-          )}
-
           {loadingPosts ? (
-            <div className="text-xs sm:text-sm text-gray-400">Загружка постов...</div>
-          ) : filteredPosts.length === 0 ? (
+            <div className="text-xs sm:text-sm text-gray-400">Р—Р°РіСЂСѓР¶РєР° РїРѕСЃС‚РѕРІ...</div>
+          ) : sortedPosts.length === 0 ? (
             <div className="text-center py-12 sm:py-16 lg:py-20">
               <p className="text-base sm:text-lg lg:text-xl 2xl:text-2xl text-gray-400 mb-6 lg:mb-8">
                 {posts.length === 0
-                  ? "Постов пока нет. Создайте первый!"
-                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Boolean(metricFilter?.value)
-                  ? "Ничего не найдено по фильтрам. Попробуйте изменить параметры."
-                  : "Ничего не найдено."}
+                  ? "РџРѕСЃС‚РѕРІ РїРѕРєР° РЅРµС‚. РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІС‹Р№!"
+                  : filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER 
+                  ? "РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ РїРѕ С„РёР»СЊС‚СЂР°Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ РёР·РјРµРЅРёС‚СЊ РїР°СЂР°РјРµС‚СЂС‹."
+                  : "РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ."}
               </p>
-              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">Создать пост</button>}
-              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER || Boolean(metricFilter?.value)) && (
-                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricFilter(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">Сбросить фильтры</button>
+              {posts.length === 0 && <button onClick={() => setCreateOpen(true)} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-white hover:bg-gray-100 text-black transition-all font-medium min-h-[40px] sm:min-h-[44px]">РЎРѕР·РґР°С‚СЊ РїРѕСЃС‚</button>}
+              {posts.length > 0 && (filterStatus !== "all" || filterPlatform !== "all" || searchQuery || minER ) && (
+                <button onClick={() => { setFilterStatus("all"); setFilterPlatform("all"); setSearchQuery(""); setMinER(""); setMetricSort(null); }} className="text-xs sm:text-sm px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-all font-medium min-h-[40px] sm:min-h-[44px]">РЎР±СЂРѕСЃРёС‚СЊ С„РёР»СЊС‚СЂС‹</button>
               )}
             </div>
           ) : (
-            <PostsList filteredPosts={filteredPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} activeMetricFilterKey={metricFilter?.key ?? null} metricFilterValue={metricFilter?.value ?? ""} onMetricHeaderClick={handleMetricHeaderClick} />
+            <PostsList filteredPosts={sortedPosts} selectedPosts={selectedPosts} togglePostSelection={togglePostSelection} selectedPost={selectedPost} setSelectedPost={setSelectedPost} visibleColumns={visibleColumns} columnOrder={columnOrder} columnLabels={columnLabels} toggleSelectAll={toggleSelectAll} handleProcess={handleProcess} handleDelete={handleDelete} formatNumber={formatNumber} activeMetricSortKey={metricSort?.key ?? null} metricSortOrder={metricSort?.order ?? "desc"} onMetricHeaderClick={handleMetricHeaderClick} />
           )}
 
           {selectedPost && <PostDetail selectedPost={selectedPost} setSelectedPost={setSelectedPost} handleProcess={handleProcess} handleDelete={handleDelete} onEdit={() => { setEditingPost(selectedPost); setEditOpen(true); setSelectedPost(null); }} formatNumber={formatNumber} accessToken={accessToken} />}
@@ -573,4 +528,5 @@ export default function AppPage() {
     </div>
   );
 }
+
 

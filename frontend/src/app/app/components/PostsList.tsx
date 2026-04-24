@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import type { Post } from "@/lib/api";
@@ -57,8 +57,8 @@ export default function PostsList({
   handleProcess,
   handleDelete,
   formatNumber,
-  activeMetricFilterKey,
-  metricFilterValue,
+  activeMetricSortKey,
+  metricSortOrder,
   onMetricHeaderClick,
 }: {
   filteredPosts: Post[];
@@ -73,8 +73,8 @@ export default function PostsList({
   handleProcess: (id: number) => Promise<void> | void;
   handleDelete: (id: number) => Promise<void> | void;
   formatNumber: (n: number) => string;
-  activeMetricFilterKey: string | null;
-  metricFilterValue: string;
+  activeMetricSortKey: string | null;
+  metricSortOrder: "asc" | "desc";
   onMetricHeaderClick: (columnKey: string) => void;
 }) {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>(DEFAULT_WIDTHS);
@@ -142,8 +142,8 @@ export default function PostsList({
   const renderHeaderCell = (key: string) => {
     if (!visibleColumns[key]) return null;
     const isMetric = METRIC_FILTER_COLUMNS.has(key);
-    const hasMetricFilter = Boolean(activeMetricFilterKey === key && metricFilterValue !== "");
-    const isMetricActive = activeMetricFilterKey === key;
+    const isMetricActive = activeMetricSortKey === key;
+    const sortArrow = isMetricActive ? (metricSortOrder === "asc" ? " \u25B2" : " \u25BC") : "";
     return (
       <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
         {isMetric ? (
@@ -153,9 +153,9 @@ export default function PostsList({
               onMetricHeaderClick(key);
             }}
             className={`truncate text-left hover:text-sky-200 ${isMetricActive ? "text-sky-300" : ""}`}
-            title="Открыть фильтр диапазона"
+            title="Сортировка по метрике"
           >
-            {columnLabels[key] || key}{hasMetricFilter ? " •" : ""}
+            {columnLabels[key] || key}{sortArrow}
           </button>
         ) : (
           <span className="truncate">{columnLabels[key] || key}</span>
@@ -172,44 +172,44 @@ export default function PostsList({
       case "source":
         return (
           <div key={key} className="flex flex-col justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            <div className="font-semibold text-xs lg:text-sm text-white mb-1 truncate group-hover:text-white transition-colors">{post.title || `📄 Пост #${post.id}`}</div>
+            <div className="font-semibold text-xs lg:text-sm text-white mb-1 truncate group-hover:text-white transition-colors">{post.title || `рџ“„ РџРѕСЃС‚ #${post.id}`}</div>
             {post.source_url && <a href={post.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:underline truncate transition-colors">{new URL(post.source_url).hostname}</a>}
           </div>
         );
       case "original":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.original_text ? <div className="text-xs text-gray-400 line-clamp-3">{post.original_text}</div> : <div className="text-xs text-gray-500 italic flex items-center gap-1">📝 Нет текста</div>}
+            {post.original_text ? <div className="text-xs text-gray-400 line-clamp-3">{post.original_text}</div> : <div className="text-xs text-gray-500 italic flex items-center gap-1">рџ“ќ РќРµС‚ С‚РµРєСЃС‚Р°</div>}
           </div>
         );
       case "result":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.generated_caption ? <div className="text-xs text-gray-400 line-clamp-3">{post.generated_caption}</div> : post.status === 'ready' ? <div className="text-xs text-gray-500 italic flex items-center gap-1">⚪ Пусто</div> : null}
+            {post.generated_caption ? <div className="text-xs text-gray-400 line-clamp-3">{post.generated_caption}</div> : post.status === 'ready' ? <div className="text-xs text-gray-500 italic flex items-center gap-1">вљЄ РџСѓСЃС‚Рѕ</div> : null}
           </div>
         );
       case "description":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.description ? <div className="text-xs text-gray-400 line-clamp-3">{post.description}</div> : <div className="text-xs text-gray-500 italic flex items-center gap-1">📝 Нет описания</div>}
+            {post.description ? <div className="text-xs text-gray-400 line-clamp-3">{post.description}</div> : <div className="text-xs text-gray-500 italic flex items-center gap-1">рџ“ќ РќРµС‚ РѕРїРёСЃР°РЅРёСЏ</div>}
           </div>
         );
       case "views":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.views_count != null ? <span className="bg-gray-700 px-1.5 py-0.5 rounded">{formatNumber(post.views_count)}</span> : <span className="text-gray-600">—</span>}
+            {post.views_count != null ? <span className="bg-gray-700 px-1.5 py-0.5 rounded">{formatNumber(post.views_count)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "likes":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.likes_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.likes_count)}</span> : <span className="text-gray-600">—</span>}
+            {post.likes_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.likes_count)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "comments":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.comments_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.comments_count)}</span> : <span className="text-gray-600">—</span>}
+            {post.comments_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.comments_count)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "er":
@@ -219,58 +219,58 @@ export default function PostsList({
               <span className={`px-1.5 py-0.5 rounded font-bold text-xs ${parseFloat(typeof post.engagement_rate === "string" ? post.engagement_rate : String(post.engagement_rate)) >= 5 ? "bg-rose-600 text-white" : parseFloat(typeof post.engagement_rate === "string" ? post.engagement_rate : String(post.engagement_rate)) >= 2 ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300"}`}>
                 {typeof post.engagement_rate === "string" ? post.engagement_rate : post.engagement_rate}%
               </span>
-            ) : <span className="text-gray-600">—</span>}
+            ) : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "plays":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.play_count != null ? <span className="bg-gray-700 px-1.5 py-0.5 rounded">{formatNumber(post.play_count)}</span> : <span className="text-gray-600">—</span>}
+            {post.play_count != null ? <span className="bg-gray-700 px-1.5 py-0.5 rounded">{formatNumber(post.play_count)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "saves":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.saves_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.saves_count)}</span> : <span className="text-gray-600">—</span>}
+            {post.saves_count != null ? <span className="text-gray-300 font-bold">{formatNumber(post.saves_count)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "followers":
         return (
           <div key={key} className="flex items-center justify-center flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>
-            {post.author_followers != null ? <span className="text-gray-300 font-bold">{formatNumber(post.author_followers)}</span> : <span className="text-gray-600">—</span>}
+            {post.author_followers != null ? <span className="text-gray-300 font-bold">{formatNumber(post.author_followers)}</span> : <span className="text-gray-600">вЂ”</span>}
           </div>
         );
       case "platform":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
-            <span className="inline-flex items-center gap-1">{post.platform === 'instagram' ? '📸' : post.platform === 'tiktok' ? '🎵' : post.platform === 'linkedin' ? '💼' : '📺'} {post.platform || 'Instagram'}</span>
+            <span className="inline-flex items-center gap-1">{post.platform === 'instagram' ? 'рџ“ё' : post.platform === 'tiktok' ? 'рџЋµ' : post.platform === 'linkedin' ? 'рџ’ј' : 'рџ“є'} {post.platform || 'Instagram'}</span>
           </div>
         );
       case "status":
         return (
           <div key={key} className="flex items-center flex-shrink-0 px-2 border-r border-gray-600/20 group" style={{ width: getColumnWidth(key) }}>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${post.status === 'new' ? 'bg-gray-700' : post.status === 'in_progress' ? 'bg-gray-700' : post.status === 'ready' ? 'bg-gray-700' : 'bg-gray-700'}`}>
-              {post.status === 'new' ? '🆕' : post.status === 'in_progress' ? '⚡' : post.status === 'ready' ? '✅' : '❌'}
+              {post.status === 'new' ? 'рџ†•' : post.status === 'in_progress' ? 'вљЎ' : post.status === 'ready' ? 'вњ…' : 'вќЊ'}
             </span>
           </div>
         );
       case "actions":
         return (
           <div key={key} className="flex items-center gap-1 flex-shrink-0 px-2" style={{ width: getColumnWidth(key) }} onClick={(e) => e.stopPropagation()}>
-            {post.status === 'new' && <button onClick={() => handleProcess(post.id)} className="px-2 py-1 text-xs bg-white text-black hover:bg-gray-100 rounded transition-all font-medium shadow-md">⚡</button>}
-            {post.status === 'error' && <button onClick={() => handleProcess(post.id)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white transition-all font-medium shadow-md">🔄</button>}
-            {post.status === 'ready' && <button onClick={() => setSelectedPost(post)} className="px-2 py-1 text-xs bg-white text-black hover:bg-gray-100 rounded transition-all font-medium shadow-md">👁️</button>}
-            <button onClick={() => handleDelete(post.id)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded text-white transition-all font-medium shadow-md" title="Удалить">🗑️</button>
+            {post.status === 'new' && <button onClick={() => handleProcess(post.id)} className="px-2 py-1 text-xs bg-white text-black hover:bg-gray-100 rounded transition-all font-medium shadow-md">вљЎ</button>}
+            {post.status === 'error' && <button onClick={() => handleProcess(post.id)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white transition-all font-medium shadow-md">рџ”„</button>}
+            {post.status === 'ready' && <button onClick={() => setSelectedPost(post)} className="px-2 py-1 text-xs bg-white text-black hover:bg-gray-100 rounded transition-all font-medium shadow-md">рџ‘ЃпёЏ</button>}
+            <button onClick={() => handleDelete(post.id)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-red-700 rounded text-white transition-all font-medium shadow-md" title="РЈРґР°Р»РёС‚СЊ">рџ—‘пёЏ</button>
           </div>
         );
       default:
-        return <div key={key} className="flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>—</div>;
+        return <div key={key} className="flex-shrink-0 px-2 border-r border-gray-600/20" style={{ width: getColumnWidth(key) }}>вЂ”</div>;
     }
   };
 
   return (
     <div>
-      {/* Мобильное отображение карточками */}
+      {/* РњРѕР±РёР»СЊРЅРѕРµ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РєР°СЂС‚РѕС‡РєР°РјРё */}
       <div className="block md:hidden space-y-3">
         {filteredPosts.map((post) => {
           const isSelected = selectedPosts.has(post.id);
@@ -296,7 +296,7 @@ export default function PostsList({
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div className="flex flex-col min-w-0">
-                    <h3 className="font-semibold text-sm text-white truncate leading-tight">{post.title || `Пост #${post.id}`}</h3>
+                    <h3 className="font-semibold text-sm text-white truncate leading-tight">{post.title || `РџРѕСЃС‚ #${post.id}`}</h3>
                     <span className="text-xs text-gray-500 truncate">{new URL(post.source_url || 'https://localhost').hostname}</span>
                   </div>
                 </div>
@@ -308,9 +308,9 @@ export default function PostsList({
                   post.status === 'ready' ? 'bg-emerald-600/20 text-emerald-400' : 
                   'bg-red-600/20 text-red-400'
                 }`}>
-                  {post.status === 'new' ? 'Новый' : 
-                   post.status === 'in_progress' ? 'В работе' : 
-                   post.status === 'ready' ? 'Готов' : 'Ошибка'}
+                  {post.status === 'new' ? 'РќРѕРІС‹Р№' : 
+                   post.status === 'in_progress' ? 'Р’ СЂР°Р±РѕС‚Рµ' : 
+                   post.status === 'ready' ? 'Р“РѕС‚РѕРІ' : 'РћС€РёР±РєР°'}
                 </span>
               </div>
 
@@ -318,14 +318,14 @@ export default function PostsList({
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-black/30 rounded-xl p-2 text-center border border-gray-700/30">
                   <div className="text-sm font-bold text-white tabular-nums">{formatNumber(post.views_count || 0)}</div>
-                  <div className="text-[10px] text-gray-500 font-medium">Просмотры</div>
+                  <div className="text-[10px] text-gray-500 font-medium">РџСЂРѕСЃРјРѕС‚СЂС‹</div>
                 </div>
                 <div className="bg-black/30 rounded-xl p-2 text-center border border-gray-700/30">
                   <div className="text-sm font-bold text-rose-400 tabular-nums">{formatNumber(post.likes_count || 0)}</div>
-                  <div className="text-[10px] text-gray-500 font-medium">Лайки</div>
+                  <div className="text-[10px] text-gray-500 font-medium">Р›Р°Р№РєРё</div>
                 </div>
                 <div className="bg-black/30 rounded-xl p-2 text-center border border-gray-700/30">
-                  <div className="text-sm font-bold text-amber-400 tabular-nums">{post.engagement_rate ? (typeof post.engagement_rate === "string" ? post.engagement_rate : post.engagement_rate) + '%' : '—'}</div>
+                  <div className="text-sm font-bold text-amber-400 tabular-nums">{post.engagement_rate ? (typeof post.engagement_rate === "string" ? post.engagement_rate : post.engagement_rate) + '%' : 'вЂ”'}</div>
                   <div className="text-[10px] text-gray-500 font-medium">ER Rate</div>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function PostsList({
               {/* Generated Preview (if ready) */}
               {post.generated_caption && (
                 <div className="mb-4 p-3 bg-gray-800/50 rounded-xl border border-gray-700/30">
-                  <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed">✨ {post.generated_caption}</p>
+                  <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed">вњЁ {post.generated_caption}</p>
                 </div>
               )}
 
@@ -344,20 +344,20 @@ export default function PostsList({
                 <div className="flex items-center gap-2">
                   {post.status === 'new' && (
                     <button onClick={() => handleProcess(post.id)} className="flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-gray-100 text-black text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95">
-                      <span>⚡</span> Обработать
+                      <span>вљЎ</span> РћР±СЂР°Р±РѕС‚Р°С‚СЊ
                     </button>
                   )}
                   {post.status === 'error' && (
                     <button onClick={() => handleProcess(post.id)} className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-all active:scale-95">
-                      <span>🔄</span> Повторить
+                      <span>рџ”„</span> РџРѕРІС‚РѕСЂРёС‚СЊ
                     </button>
                   )}
                   {post.status === 'ready' && (
                     <button onClick={() => setSelectedPost(post)} className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95">
-                      <span>👁️</span> Открыть
+                      <span>рџ‘ЃпёЏ</span> РћС‚РєСЂС‹С‚СЊ
                     </button>
                   )}
-                  <button onClick={() => handleDelete(post.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors active:scale-95" title="Удалить">
+                  <button onClick={() => handleDelete(post.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors active:scale-95" title="РЈРґР°Р»РёС‚СЊ">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   </button>
                 </div>
@@ -367,7 +367,7 @@ export default function PostsList({
         })}
       </div>
 
-      {/* Десктопное отображение таблицей */}
+      {/* Р”РµСЃРєС‚РѕРїРЅРѕРµ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ С‚Р°Р±Р»РёС†РµР№ */}
       <div className="hidden md:block w-full bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-xl border border-gray-700/30 shadow-2xl backdrop-blur-sm ring-1 ring-gray-700/20 overflow-hidden">
         <div className="overflow-x-auto posts-table-container" style={{ cursor: resizingColumn ? "col-resize" : "auto", userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none", MozUserSelect: "none" }} onDragStart={(e) => e.preventDefault()}>
           {/* Table Header */}
@@ -399,3 +399,4 @@ export default function PostsList({
     </div>
   );
 }
+
