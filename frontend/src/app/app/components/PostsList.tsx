@@ -462,7 +462,7 @@ export default function PostsList({
       </div>
       {hasHorizontalOverflow && (
         <div className="hidden md:block sticky bottom-2 z-20 mt-2 pointer-events-none">
-          <div className="mx-2 lg:mx-4 bg-gray-900/80 border border-gray-700/40 rounded-md p-1 pointer-events-auto">
+          <div className="w-full bg-gray-900/80 border border-gray-700/40 rounded-md p-1 pointer-events-auto">
             <div ref={floatingScrollRef} className="overflow-x-auto">
               <div style={{ width: tableContentWidth, height: 1 }} />
             </div>
