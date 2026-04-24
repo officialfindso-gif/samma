@@ -2,6 +2,7 @@ from celery import shared_task
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
+import re
 from .models import Post, Prompt, SystemSettings
 from .llm import generate_caption
 from .scraper import scrape_content
@@ -24,6 +25,16 @@ def _choose_original_text(*candidates):
     return ''
 
 
+def _build_profile_post_title(platform: str, username: str, index: int, *text_candidates):
+    preview = _choose_original_text(*text_candidates)
+    if preview:
+        one_line = re.sub(r'\s+', ' ', preview).strip()
+        if len(one_line) > 80:
+            one_line = one_line[:77].rstrip() + '...'
+        return one_line
+    return f"{platform.upper()} - @{username} #{index + 1}"
+
+
 def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: int):
     if scraped_data.get('error'):
         raise RuntimeError(str(scraped_data.get('error')))
@@ -36,10 +47,17 @@ def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: in
         for i, item in enumerate(profile_items[:max_items]):
             if platform == 'instagram':
                 item_data = item.get('data', {})
-                title = f"{platform.upper()} - @{competitor.username} #{i + 1}"
                 description = item_data.get('description', '')
                 caption = item_data.get('caption', '')
                 transcript = item_data.get('transcript', '')
+                title = _build_profile_post_title(
+                    platform,
+                    competitor.username,
+                    i,
+                    description,
+                    caption,
+                    transcript,
+                )
                 views = item.get('views')
                 likes = item.get('likes')
                 comments = item.get('comments')
@@ -49,10 +67,10 @@ def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: in
                 duration = item_data.get('video_duration')
                 source_url = item.get('url') or competitor.url
             elif platform == 'tiktok':
-                title = f"{platform.upper()} - @{competitor.username} #{i + 1}"
                 description = item.get('desc', '')
                 caption = ''
                 transcript = ''
+                title = _build_profile_post_title(platform, competitor.username, i, description)
                 views = item.get('views')
                 likes = item.get('likes')
                 comments = item.get('comments')
@@ -62,7 +80,13 @@ def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: in
                 duration = item.get('duration')
                 source_url = item.get('url') or competitor.url
             elif platform == 'youtube':
-                title = item.get('title', '') or f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                title = _build_profile_post_title(
+                    platform,
+                    competitor.username,
+                    i,
+                    item.get('title', ''),
+                    item.get('description', ''),
+                )
                 description = item.get('description', '')
                 caption = ''
                 transcript = ''
@@ -75,7 +99,13 @@ def _create_posts_from_competitor_scrape(competitor, scraped_data, max_items: in
                 duration = item.get('duration')
                 source_url = item.get('url') or competitor.url
             else:
-                title = item.get('title', '') or f"{platform.upper()} - @{competitor.username} #{i + 1}"
+                title = _build_profile_post_title(
+                    platform,
+                    competitor.username,
+                    i,
+                    item.get('title', ''),
+                    item.get('description', ''),
+                )
                 description = item.get('description', '')
                 caption = ''
                 transcript = ''
