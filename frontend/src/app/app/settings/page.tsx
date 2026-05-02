@@ -14,7 +14,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isStaff, setIsStaff] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
 
   const [autoScrapingEnabled, setAutoScrapingEnabled] = useState(true);
   const [scrapingHour, setScrapingHour] = useState(9);
@@ -35,7 +35,7 @@ export default function SettingsPage() {
         ]);
 
         setSettings(data);
-        setIsStaff(!!(user.is_staff || user.is_superuser));
+        setIsSuperuser(!!user.is_superuser);
         setAutoScrapingEnabled(data.auto_scraping_enabled);
         setScrapingHour(data.scraping_hour);
         setScrapingMinute(data.scraping_minute);
@@ -174,7 +174,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {isStaff && (
+          {isSuperuser && (
             <div className="mb-6 p-4 bg-indigo-900/20 border border-indigo-700/30 rounded">
               <p className="text-sm text-indigo-300">
                 <strong>Глубина парсинга профилей</strong> настраивается в разделе{" "}
