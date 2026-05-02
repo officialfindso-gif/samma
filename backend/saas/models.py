@@ -46,6 +46,10 @@ class Workspace(models.Model):
         help_text='Теги через запятую: срочно, премиум, активный'
     )
     
+    auto_scraping_enabled = models.BooleanField(default=False)
+    scraping_hour = models.IntegerField(default=9)
+    scraping_minute = models.IntegerField(default=0)
+    last_auto_scrape_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -425,7 +425,7 @@ class SystemSettingsViewSet(viewsets.ModelViewSet):
     Только один объект настроек (singleton).
     """
     serializer_class = SystemSettingsSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     http_method_names = ['get', 'put', 'patch']  # Только чтение и обновление
 
     def get_queryset(self):  # type: ignore[override]

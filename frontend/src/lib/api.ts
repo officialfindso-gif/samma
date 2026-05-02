@@ -98,10 +98,15 @@ export interface Workspace {
   color: string;
   tags: string;
   tags_list: string[];
+  auto_scraping_enabled: boolean;
+  scraping_hour: number;
+  scraping_minute: number;
+  last_auto_scrape_at: string | null;
   created_at: string;
   updated_at: string;
   posts_count: number;
   recent_activities: Activity[];
+  current_user_role: "owner" | "admin" | "editor" | "viewer" | null;
 }
 
 export interface Activity {
@@ -121,6 +126,9 @@ export interface CreateWorkspace {
   client_notes?: string;
   color?: string;
   tags?: string;
+  auto_scraping_enabled?: boolean;
+  scraping_hour?: number;
+  scraping_minute?: number;
 }
 
 /**

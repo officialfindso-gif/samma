@@ -95,7 +95,7 @@ export default function Sidebar({
             </button>
           )}
           <button
-            onClick={() => router.push("/app/settings")}
+            onClick={() => router.push(activeWorkspaceId ? `/app/settings?workspace=${activeWorkspaceId}` : "/app/settings")}
             className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-white/5 text-gray-300 transition-all flex items-center gap-2"
           >
             <span>⚙️</span>

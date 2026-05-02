@@ -543,6 +543,121 @@ def scrape_competitor_posts():
 
 
 @shared_task
+def run_workspace_auto_scraping():
+    """Run auto-scraping for workspaces whose schedule matches the current minute."""
+    from .models import CompetitorAccount, SystemSettings, Workspace
+
+    system_settings = SystemSettings.get_settings()
+    now = timezone.localtime(timezone.now())
+
+    workspaces = Workspace.objects.filter(
+        auto_scraping_enabled=True,
+        competitor_accounts__is_active=True,
+    ).distinct().order_by('id')
+
+    if not workspaces.exists():
+        logger.info("No workspaces with enabled auto-scraping")
+        return {
+            'status': 'skipped',
+            'reason': 'No workspaces with enabled auto-scraping',
+        }
+
+    workspace_results = []
+    created_posts = []
+    errors = []
+
+    for workspace in workspaces:
+        if workspace.scraping_hour != now.hour or workspace.scraping_minute != now.minute:
+            continue
+
+        last_auto_scrape = workspace.last_auto_scrape_at
+        if last_auto_scrape:
+            last_local = timezone.localtime(last_auto_scrape)
+            if (
+                last_local.year == now.year and
+                last_local.month == now.month and
+                last_local.day == now.day and
+                last_local.hour == now.hour and
+                last_local.minute == now.minute
+            ):
+                logger.info("Workspace %s already auto-scraped at %s", workspace.id, last_local)
+                continue
+
+        competitors = list(
+            CompetitorAccount.objects.filter(
+                workspace=workspace,
+                is_active=True,
+            ).select_related('workspace')
+        )
+
+        if not competitors:
+            workspace_results.append({
+                'workspace_id': workspace.id,
+                'workspace_name': workspace.name,
+                'status': 'skipped',
+                'reason': 'No active competitors',
+            })
+            continue
+
+        Workspace.objects.filter(pk=workspace.pk).update(last_auto_scrape_at=timezone.now())
+
+        workspace_post_ids = []
+        workspace_errors = []
+        for competitor in competitors:
+            try:
+                logger.info(
+                    "Auto scraping posts for workspace %s: %s @%s",
+                    workspace.id,
+                    competitor.platform,
+                    competitor.username,
+                )
+                scraped_data = scrape_content(
+                    competitor.url,
+                    max_items=system_settings.max_parse_depth,
+                )
+                post_ids = _create_posts_from_competitor_scrape(
+                    competitor=competitor,
+                    scraped_data=scraped_data,
+                    max_items=system_settings.max_parse_depth,
+                )
+                competitor.last_scraped_at = timezone.now()
+                competitor.save(update_fields=['last_scraped_at'])
+                workspace_post_ids.extend(post_ids)
+                created_posts.extend(post_ids)
+            except Exception as exc:
+                error_msg = f"Workspace {workspace.id} / {competitor.username}: {exc}"
+                logger.error(error_msg, exc_info=True)
+                workspace_errors.append(error_msg)
+                errors.append(error_msg)
+
+        workspace_results.append({
+            'workspace_id': workspace.id,
+            'workspace_name': workspace.name,
+            'status': 'success' if not workspace_errors else 'partial',
+            'competitors_count': len(competitors),
+            'created_posts': len(workspace_post_ids),
+            'post_ids': workspace_post_ids,
+            'errors': workspace_errors,
+        })
+
+    if not workspace_results:
+        logger.info("No workspaces matched the current auto-scrape minute")
+        return {
+            'status': 'skipped',
+            'reason': 'No workspaces matched the current schedule',
+            'current_time': f'{now.hour}:{now.minute:02d}',
+        }
+
+    return {
+        'status': 'success' if not errors else 'partial',
+        'workspace_results': workspace_results,
+        'created_posts': len(created_posts),
+        'post_ids': created_posts,
+        'errors': errors,
+    }
+
+
+@shared_task
 def scrape_single_competitor(competitor_id: int):
     """
     Парсит посты одного конкурента по ID.

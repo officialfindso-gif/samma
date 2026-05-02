@@ -20,13 +20,20 @@ class WorkspaceSerializer(serializers.ModelSerializer):
     posts_count = serializers.IntegerField(read_only=True)
     tags_list = serializers.SerializerMethodField()
     recent_activities = serializers.SerializerMethodField()
+    current_user_role = serializers.SerializerMethodField()
 
     class Meta:
         model = Workspace
         fields = [
             'id', 'name', 'seats_limit', 'is_client', 'client_name',
             'client_contact', 'client_notes', 'color', 'tags', 'tags_list',
-            'created_at', 'updated_at', 'posts_count', 'recent_activities',
+            'auto_scraping_enabled', 'scraping_hour', 'scraping_minute',
+            'last_auto_scrape_at', 'created_at', 'updated_at', 'posts_count',
+            'recent_activities', 'current_user_role',
+        ]
+        read_only_fields = [
+            'last_auto_scrape_at', 'created_at', 'updated_at', 'posts_count',
+            'recent_activities', 'current_user_role', 'tags_list',
         ]
 
     def get_tags_list(self, obj):
@@ -39,6 +46,24 @@ class WorkspaceSerializer(serializers.ModelSerializer):
             'id': a.id, 'type': a.activity_type, 'title': a.title,
             'description': a.description, 'created_at': a.created_at,
         } for a in activities]
+
+    def get_current_user_role(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return None
+        membership = obj.members.filter(user=user).only('role').first()
+        return membership.role if membership else None
+
+    def validate_scraping_hour(self, value):
+        if value < 0 or value > 23:
+            raise serializers.ValidationError('Hour must be 0-23')
+        return value
+
+    def validate_scraping_minute(self, value):
+        if value < 0 or value > 59:
+            raise serializers.ValidationError('Minute must be 0-59')
+        return value
 
 
 class PostSerializer(serializers.ModelSerializer):

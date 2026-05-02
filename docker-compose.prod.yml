@@ -66,6 +66,24 @@ services:
       - app_network
     restart: unless-stopped
 
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: content_saas_celery_beat
+    command: celery -A core beat -l info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgres://content_user:change_me@db:5432/content_saas}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app_network
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
