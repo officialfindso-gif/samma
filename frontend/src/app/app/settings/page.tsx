@@ -150,9 +150,6 @@ export default function SettingsPage() {
             Назад к постам
           </button>
           <h1 className="text-4xl font-bold text-white mb-2">Настройки автопарсинга</h1>
-          <p className="text-gray-400">
-            Параметры применяются отдельно для каждого workspace и начинают работать без рестарта Celery Beat.
-          </p>
         </div>
 
         <div className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-lg border border-gray-700/30 p-6">
@@ -169,11 +166,6 @@ export default function SettingsPage() {
                 </option>
               ))}
             </select>
-            {selectedWorkspace?.current_user_role && (
-              <p className="mt-2 text-sm text-gray-400">
-                Ваша роль: {selectedWorkspace.current_user_role}
-              </p>
-            )}
           </div>
 
           <h2 className="text-2xl font-bold text-white mb-6">Автоматический парсинг</h2>
